@@ -3,11 +3,11 @@ package gomediacenter
 import "time"
 
 type Movie struct {
-	Video
+	Video           *Video
 	ExtraType       string `json:"ExtraType,omitempty"`
 	Awards          string `json:"AwardSummary"`
 	MetaScore       int `json:"Metascore"`
-	PremiereDate    time.Date `json:"PremiereDate"`
+	PremiereDate    time.Time `json:"PremiereDate"`
 	ImdbId          string
 	MovieDB         string
 	Sync

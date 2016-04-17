@@ -1,14 +1,20 @@
 package gomediacenter
 
+import "gopkg.in/mgo.v2/bson"
+
 type Video struct {
 	Name         string `json:"Name"`
-	sortName     string `json:"SortName"`
-	Id           string `json:"Id"`
+	SortName     string `json:"SortName"`
+	Id           bson.ObjectId `json:"Id"`
 	Etage        string `json:"Etage,omitempty"`
 	CanDelete    bool `json:"CanDelete"`
 	CanDownload  bool `json:"CanDownload"`
-	Path         string
-	RuntimeTicks int `json:"RunTimeTicks"`
+	MediaSources []interface{} `json:"MediaSources,array"`
+	LocationType string `json:"LocationType"`
+	MediaType    string `json:"MediaType"`
+	HomePage     string `json:"HomePageUrl"`
+	LockedFields []string `json:"LockedFields"`
+	LockedData   bool `json:"LockData"`
 }
 
 type Studio struct {
@@ -18,7 +24,6 @@ type Studio struct {
 
 type VideoSource struct {
 	Protocol              string `json:"Protocol"`
-	Id                    string `json:"Id"`
 	Path                  string `json:"Path"`
 	Type                  string `json:"Type"`
 	Container             string `json:"Container"`
@@ -32,6 +37,10 @@ type VideoSource struct {
 	RequiresClosing       bool `json:"RequiresClosing"`
 	VideoType             string `json:"VideoType"`
 	MediaStreams          []interface{} `json:"MediaStreams"`
+	StreamFileNames       []string `json:"PlayableStreamFileNames"`
+	Formats               []string `json:"Formats"`
+	RequiredHttpHeaders   []interface{} `json:"RequiredHttpHeaders"`
+	DefaultAudioStream    int `json:"DefaultAudioStreamIndex"`
 }
 
 type VideoStream struct {

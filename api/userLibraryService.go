@@ -1,8 +1,43 @@
 package api
 
-//[Route("/Users/{UserId}/Items/{Id}", "GET", Summary = "Gets an item from a user's library")]
-//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-//[ApiMember(Name = "Id", Description = "Item Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
+import (
+	"net/http"
+	"github.com/tcm1911/gomediacenter/db"
+	"github.com/tcm1911/gomediacenter"
+	"encoding/json"
+)
+
+// UserItemHandler gets an item from a user's library.
+// Path vars are uid and id.
+func UserItemHandler(w http.ResponseWriter, r *http.Request) {
+	//pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	// TODO: Add user restriction.
+	//uid := vars["uid"]
+	//id := pathVars["id"]
+
+	database := GetContextVar(r, "db").(db.ItemFinder)
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("no database found"))
+	}
+
+	mediaType, media, err := database.FindItemById("12345")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("item not found"))
+	}
+
+	// Cast media to the right type so we can write the correct response.
+	if mediaType == gomediacenter.MOVIE {
+		movie := media.(*gomediacenter.Movie)
+		writeMovieResponse(w, movie)
+	}
+
+}
+
+func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie) {
+	json.NewEncoder(w).Encode(m)
+}
 
 //[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
 //[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
