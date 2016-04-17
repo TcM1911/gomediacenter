@@ -41,6 +41,7 @@ type VideoSource struct {
 	Formats               []string `json:"Formats"`
 	RequiredHttpHeaders   []interface{} `json:"RequiredHttpHeaders"`
 	DefaultAudioStream    int `json:"DefaultAudioStreamIndex"`
+	Chapters              []Chapter `json:"Chapters,arrays"`
 }
 
 type VideoStream struct {
@@ -67,4 +68,9 @@ type VideoStream struct {
 	Level                  int `json:"Level"`
 	Anamorphic             bool `json:"IsAnamorphic"`
 	Cabac                  bool `json:"IsCabac"`
+}
+
+type Chapter struct {
+	StartPos int `json:"StartPositionTicks"`
+	Name     string `json:"Name"`
 }
