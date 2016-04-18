@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 func init() {
@@ -39,9 +40,16 @@ func init() {
 	movie.Video = video
 	movie.ImdbId = "imdbID"
 	movie.People = []gomediacenter.Person{actor}
+
+	// Create item user data
+	userdata = gomediacenter.NewItemUserData("12345", "userId")
+	userdata.Played = true
+	userdata.PlayCount = 1
+	userdata.LastPlayedDate = time.Now().UTC()
 }
 
 var movie *gomediacenter.Movie
+var userdata *gomediacenter.ItemUserData
 
 // Setup db mock
 type mockDB struct {
@@ -53,11 +61,17 @@ func (m *mockDB) FindItemById(s string) (gomediacenter.MEDIATYPE, interface{}, e
 	return args.Get(0).(gomediacenter.MEDIATYPE), args.Get(1).(interface{}), args.Error(2)
 }
 
+func (m *mockDB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, error) {
+	args := m.Called(uid, itemId)
+	return args.Get(0).(*gomediacenter.ItemUserData), args.Error(1)
+}
+
 func TestUserItemHandler(t *testing.T) {
 	assert := assert.New(t)
 
 	database := new(mockDB)
 	database.On("FindItemById", "12345").Return(gomediacenter.MOVIE, movie, nil)
+	database.On("FindItemUserData", "userid", "12345").Return(userdata, nil)
 
 	// PathVars
 	vars := make(map[string]string)
@@ -92,4 +106,9 @@ func TestUserItemHandler(t *testing.T) {
 	assert.Contains(body, `"Channels":2,`)
 	assert.Contains(body, `"ImdbId":"imdbID",`)
 	assert.Contains(body, `"People":[{"Name":"Actor name","Id":"id","Role":"Actor"`)
+
+	assert.Contains(body, `"UserData":{"PlayedPercentage":0,"PlaybackPositionTicks":0`)
+	assert.Contains(body, `"Played":true,`)
+	assert.Contains(body, `"PlayCount":1,`)
+	assert.NotContains(body, "userId")
 }

@@ -11,10 +11,10 @@ type Database interface {
 
 type ItemFinder interface {
 	FindItemById(id string) (gomediacenter.MEDIATYPE, interface{}, error)
+	FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, error)
 }
 
 type ItemUserData interface {
-	FindItemUserData(uid, itemId string) (gomediacenter.UserItemData, error)
 	InsertItemUserData(uid, itemId string) error
 	DeleteItemUserData(uid, itemId string) error
 }

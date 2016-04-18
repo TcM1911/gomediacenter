@@ -2,9 +2,13 @@ package gomediacenter
 
 import "time"
 
+/////////////
+// Structs //
+/////////////
+
 // UserItemData holds data for an item with regards to a user. For example:
 // how many times the item has been played, if it's a favorite.
-type UserItemData struct {
+type ItemUserData struct {
 	Id               string `json:"-" bson:"id"`
 	Uid              string `json:"-" bson:"uid"`
 	PlayedPercentage float32 `json:"PlayedPercentage" bson:"percent"`
@@ -15,3 +19,15 @@ type UserItemData struct {
 	Played           bool `json:"Played" bson:"played"`
 	Key              int `json:"Key" bson:"key"`
 }
+
+////////////
+// Public //
+////////////
+
+func NewItemUserData(id, uid string) *ItemUserData {
+	itemUserData := new(ItemUserData)
+	itemUserData.Id = id
+	itemUserData.Uid = uid
+	return itemUserData
+}
+

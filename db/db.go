@@ -81,6 +81,21 @@ func (d *DB) FindItemById(id string) (gomediacenter.MEDIATYPE, interface{}, erro
 	return mediatype.media, nil, errors.New("no match")
 }
 
+// FindItemUserData gets the user data for an item.
+func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, error) {
+	q := d.session.DB(database_name).C(item_user_data_collection).Find(bson.M{"uid": uid, "id": itemId})
+
+	var itemUserData *gomediacenter.ItemUserData
+	err := q.One(&itemUserData)
+	if err == mgo.ErrNotFound {
+		return gomediacenter.NewItemUserData(itemId, uid), nil
+	}
+	if err != nil {
+		return itemUserData, err
+	}
+	return itemUserData, nil
+}
+
 /////////////
 // Private //
 /////////////

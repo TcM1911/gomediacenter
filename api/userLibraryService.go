@@ -7,13 +7,26 @@ import (
 	"encoding/json"
 )
 
+/////////////
+// Structs //
+/////////////
+
+type movieResponse struct {
+	Movie *gomediacenter.Movie
+	ItemUserData *gomediacenter.ItemUserData `json:"UserData"`
+}
+
+////////////
+// Public //
+////////////
+
 // UserItemHandler gets an item from a user's library.
 // Path vars are uid and id.
 func UserItemHandler(w http.ResponseWriter, r *http.Request) {
-	//pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
 	// TODO: Add user restriction.
-	//uid := vars["uid"]
-	//id := pathVars["id"]
+	uid := pathVars["uid"]
+	id := pathVars["id"]
 
 	database := GetContextVar(r, "db").(db.ItemFinder)
 	if database == nil {
@@ -21,22 +34,34 @@ func UserItemHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("no database found"))
 	}
 
-	mediaType, media, err := database.FindItemById("12345")
+	mediaType, media, err := database.FindItemById(id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("item not found"))
+		w.Write([]byte("error find the item"))
+	}
+
+	// Get the items user data.
+	itemUserData, err := database.FindItemUserData(uid, id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error finding user data for the item"))
 	}
 
 	// Cast media to the right type so we can write the correct response.
 	if mediaType == gomediacenter.MOVIE {
 		movie := media.(*gomediacenter.Movie)
-		writeMovieResponse(w, movie)
+		writeMovieResponse(w, movie, itemUserData)
 	}
 
 }
 
-func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie) {
-	json.NewEncoder(w).Encode(m)
+/////////////
+// Private //
+/////////////
+
+func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie, u *gomediacenter.ItemUserData) {
+	res := movieResponse{Movie: m, ItemUserData: u}
+	json.NewEncoder(w).Encode(res)
 }
 
 //[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
