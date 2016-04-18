@@ -5,6 +5,8 @@ import "time"
 // UserItemData holds data for an item with regards to a user. For example:
 // how many times the item has been played, if it's a favorite.
 type UserItemData struct {
+	Id               string `json:"-" bson:"id"`
+	Uid              string `json:"-" bson:"uid"`
 	PlayedPercentage float32 `json:"PlayedPercentage" bson:"percent"`
 	PlaybackPosTicks int `json:"PlaybackPositionTicks" bson:"pos"`
 	PlayCount        int `json:"PlayCount" bson:"count"`
