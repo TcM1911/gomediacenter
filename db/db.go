@@ -8,11 +8,19 @@ import (
 	"errors"
 )
 
+///////////////
+// Constants //
+///////////////
 const (
-	default_database_name = "gomedia"
-	default_mediatypes_collection = "mediatypes"
-	default_movie_collection = "movies"
+	database_name = "gomedia"
+	mediatypes_collection = "mediatypes"
+	movie_collection = "movies"
+	item_user_data_collection = "itemuserdata"
 )
+
+/////////////
+// Structs //
+/////////////
 
 type DB struct {
 	session *mgo.Session
@@ -24,6 +32,10 @@ type mediaType struct {
 	id    bson.ObjectId `bson:"_id"`
 	media gomediacenter.MEDIATYPE
 }
+
+////////////
+// Public //
+////////////
 
 // Connect connects to a database and returns a session.
 func Connect(host string) {
@@ -52,7 +64,7 @@ func (d *DB) GetDBSession() *DB {
 
 // FindItemById finds an item from the database. It also returns the media type.
 func (d *DB) FindItemById(id string) (gomediacenter.MEDIATYPE, interface{}, error) {
-	q := d.session.DB(default_database_name).C(default_mediatypes_collection).FindId(bson.ObjectIdHex(id))
+	q := d.session.DB(database_name).C(mediatypes_collection).FindId(bson.ObjectIdHex(id))
 
 	var mediatype mediaType
 	if err := q.One(&mediatype); err != nil {
@@ -69,8 +81,12 @@ func (d *DB) FindItemById(id string) (gomediacenter.MEDIATYPE, interface{}, erro
 	return mediatype.media, nil, errors.New("no match")
 }
 
+/////////////
+// Private //
+/////////////
+
 func findMovieById(d *DB, id string) (*gomediacenter.Movie, error) {
-	q := d.session.DB(default_database_name).C(default_movie_collection).FindId(bson.ObjectIdHex(id))
+	q := d.session.DB(database_name).C(movie_collection).FindId(bson.ObjectIdHex(id))
 	var movie *gomediacenter.Movie
 	if err := q.One(&movie); err != nil {
 		return movie, err
