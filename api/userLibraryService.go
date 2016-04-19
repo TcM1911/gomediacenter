@@ -1,10 +1,11 @@
 package api
 
 import (
-	"net/http"
-	"github.com/tcm1911/gomediacenter/db"
-	"github.com/tcm1911/gomediacenter"
 	"encoding/json"
+	"net/http"
+
+	"github.com/tcm1911/gomediacenter"
+	"github.com/tcm1911/gomediacenter/db"
 )
 
 /////////////
@@ -12,7 +13,7 @@ import (
 /////////////
 
 type movieResponse struct {
-	Movie *gomediacenter.Movie
+	Movie        *gomediacenter.Movie
 	ItemUserData *gomediacenter.ItemUserData `json:"UserData"`
 }
 

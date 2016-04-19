@@ -1,20 +1,20 @@
 package db
 
 import (
-	"gopkg.in/mgo.v2"
-	"log"
-	"github.com/tcm1911/gomediacenter"
-	"labix.org/v2/mgo/bson"
 	"errors"
+	"github.com/tcm1911/gomediacenter"
+	"gopkg.in/mgo.v2"
+	"labix.org/v2/mgo/bson"
+	"log"
 )
 
 ///////////////
 // Constants //
 ///////////////
 const (
-	database_name = "gomedia"
-	mediatypes_collection = "mediatypes"
-	movie_collection = "movies"
+	database_name             = "gomedia"
+	mediatypes_collection     = "mediatypes"
+	movie_collection          = "movies"
 	item_user_data_collection = "itemuserdata"
 )
 

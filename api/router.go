@@ -1151,7 +1151,7 @@ func NewAPIRouter() *(mux.Router) {
 
 	//[Route("/Persons/{Name}/Images/{Type}/{Index}", "GET")]
 	//[Route("/Persons/{Name}/Images/{Type}/{Index}", "HEAD")]
-	personsRouter.HandleFunc("/{name}/Images/{type}/{index}", notYetImplemented).Methods("GET")	
+	personsRouter.HandleFunc("/{name}/Images/{type}/{index}", notYetImplemented).Methods("GET")
 
 	//[Route("/Persons", "GET", Summary = "Gets all persons from a given item, folder, or the entire library")]
 	router.HandleFunc("/Persons", notYetImplemented).Methods("GET")
