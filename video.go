@@ -41,7 +41,7 @@ type VideoSource struct {
 	Formats               []string      `json:"Formats"`
 	RequiredHttpHeaders   []interface{} `json:"RequiredHttpHeaders"`
 	DefaultAudioStream    int           `json:"DefaultAudioStreamIndex"`
-	Chapters              []Chapter     `json:"Chapters,arrays"`
+	Chapters              []Chapter     `json:"Chapters,array"`
 }
 
 type VideoStream struct {
@@ -73,4 +73,9 @@ type VideoStream struct {
 type Chapter struct {
 	StartPos int    `json:"StartPositionTicks"`
 	Name     string `json:"Name"`
+}
+
+type Intro struct {
+	Name string
+	Path string
 }

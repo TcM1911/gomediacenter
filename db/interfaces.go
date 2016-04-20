@@ -7,11 +7,16 @@ type Database interface {
 	Close()
 	ItemFinder
 	ItemUserData
+	IntroFinder
 }
 
 type ItemFinder interface {
 	FindItemById(id string) (gomediacenter.MEDIATYPE, interface{}, error)
 	FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, error)
+}
+
+type IntroFinder interface {
+	FindItemIntro(id string) (*[]gomediacenter.Intro, error)
 }
 
 type ItemUserData interface {

@@ -10,7 +10,12 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"labix.org/v2/mgo"
 )
+
+///////////
+// Setup //
+///////////
 
 func init() {
 	// Create movie data.
@@ -27,6 +32,7 @@ func init() {
 	videoSource.Path = "/path/to/file.mkv"
 	videoSource.Container = "mkv"
 	videoSource.MediaStreams = []interface{}{vStream, aStream}
+	videoSource.Chapters = []gomediacenter.Chapter{{Name: "Chapter 1", StartPos: 0}, {Name: "Chapter 2", StartPos: 2000},}
 
 	id := bson.NewObjectId()
 	video := new(gomediacenter.Video)
@@ -51,6 +57,10 @@ func init() {
 var movie *gomediacenter.Movie
 var userdata *gomediacenter.ItemUserData
 
+///////////
+// Mocks //
+///////////
+
 // Setup db mock
 type mockDB struct {
 	mock.Mock
@@ -65,6 +75,15 @@ func (m *mockDB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserDa
 	args := m.Called(uid, itemId)
 	return args.Get(0).(*gomediacenter.ItemUserData), args.Error(1)
 }
+
+func (m *mockDB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
+	args := m.Called(id)
+	return args.Get(0).(*[]gomediacenter.Intro), args.Error(1)
+}
+
+///////////
+// Tests //
+///////////
 
 func TestUserItemHandler(t *testing.T) {
 	assert := assert.New(t)
@@ -106,9 +125,49 @@ func TestUserItemHandler(t *testing.T) {
 	assert.Contains(body, `"Channels":2,`)
 	assert.Contains(body, `"ImdbId":"imdbID",`)
 	assert.Contains(body, `"People":[{"Name":"Actor name","Id":"id","Role":"Actor"`)
+	assert.Contains(body, `"Chapters":[{"StartPositionTicks":0,"Name":"Chapter 1"},{"StartPositionTicks":2000,"Name":"Chapter 2"}]`)
 
 	assert.Contains(body, `"UserData":{"PlayedPercentage":0,"PlaybackPositionTicks":0`)
 	assert.Contains(body, `"Played":true,`)
 	assert.Contains(body, `"PlayCount":1,`)
 	assert.NotContains(body, "userId")
 }
+
+// Test that an empty struct is returned if no intros are returned from the database.
+func TestUserItemIntrosHandlerNoEntry(t *testing.T) {
+	assert := assert.New(t)
+
+	database := new(mockDB)
+	var array *[]gomediacenter.Intro
+	database.On("FindItemIntro", "12345").Return(array, mgo.ErrNotFound)
+
+	// PathVars
+	vars := make(map[string]string)
+	vars["uid"] = "userid"
+	vars["id"] = "12345"
+
+	request, _ := http.NewRequest("GET", "/test", nil)
+
+	// Add to context
+	OpenContext(request)
+	defer CloseContext(request)
+	SetContextVar(request, "db", database)
+	SetContextVar(request, "pathVars", vars)
+
+	recorder := httptest.NewRecorder()
+	UserItemIntrosHandler(recorder, request)
+
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	p, err := ioutil.ReadAll(recorder.Body)
+	if err != nil {
+		assert.Fail("Error reading the body")
+	}
+	body := string(p)
+
+	assert.Contains(body, `{"TotalRecordCount":0}`)
+}
+
+//////////////////////
+// Helper functions //
+//////////////////////

@@ -6,6 +6,8 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
+	"labix.org/v2/mgo"
+	"log"
 )
 
 /////////////
@@ -17,6 +19,11 @@ type movieResponse struct {
 	ItemUserData *gomediacenter.ItemUserData `json:"UserData"`
 }
 
+type introResponse struct {
+	Intros *[]gomediacenter.Intro `json:"Items,array,omitempty"`
+	Count  int `json:"TotalRecordCount"`
+}
+
 ////////////
 // Public //
 ////////////
@@ -25,7 +32,7 @@ type movieResponse struct {
 // Path vars are uid and id.
 func UserItemHandler(w http.ResponseWriter, r *http.Request) {
 	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	// TODO: Add user restriction.
+	// TODO: Add user restriction. Need to check if the user is allowed to view this item.
 	uid := pathVars["uid"]
 	id := pathVars["id"]
 
@@ -56,6 +63,37 @@ func UserItemHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// UserItemIntrosHandler returns a list of intros to play before the main media item plays.
+func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	// TODO: Add user restriction. Need to check if the user is allowed to view this item.
+	//uid := pathVars["uid"]
+	id := pathVars["id"]
+
+	database := GetContextVar(r, "db").(db.IntroFinder)
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("no database found"))
+	}
+
+	res := new(introResponse)
+
+	intros, err := database.FindItemIntro(id)
+	if err == mgo.ErrNotFound {
+		res.Count = 0 // Ensure it's 0
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("Error getting intros from the database", err)
+	} else {
+		size := len(*intros)
+		res.Count = size
+		res.Intros = intros
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
+}
+
 /////////////
 // Private //
 /////////////
@@ -67,10 +105,6 @@ func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie, u *gomedi
 
 //[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
 //[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-
-//[Route("/Users/{UserId}/Items/{Id}/Intros", "GET", Summary = "Gets intros to play before the main media item plays")]
-//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-//[ApiMember(Name = "Id", Description = "Item Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
 
 //[Route("/Users/{UserId}/FavoriteItems/{Id}", "POST", Summary = "Marks an item as a favorite")]
 //[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
