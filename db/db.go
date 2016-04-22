@@ -96,6 +96,13 @@ func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, 
 	return itemUserData, nil
 }
 
+// FindItemIntro returns intros for an item.
+func (d *DB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
+	// TODO: Add support for intros
+	var intros []gomediacenter.Intro
+	return &intros, mgo.ErrNotFound
+}
+
 /////////////
 // Private //
 /////////////
