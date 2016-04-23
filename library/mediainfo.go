@@ -1,5 +1,9 @@
 package library
 
+import (
+	"encoding/json"
+)
+
 // ffprobe cmd: ffprobe -v quiet -show_chapters -print_format json -show_format -show_streams file.mkv
 
 /////////////
@@ -7,12 +11,12 @@ package library
 /////////////
 
 type FFprobeOutput struct {
-	Format   format `json:"format"`
-	Chapters []chapter `json:"chapters,array"`
-	Streams  []stream `json:"streams,array"`
+	Format   Format `json:"format"`
+	Chapters []Chapter `json:"chapters,array"`
+	Streams  []Stream `json:"streams,array"`
 }
 
-type stream struct {
+type Stream struct {
 	// Video and audio
 	Index              int `json:"index"`
 	CodecName          string `json:"codec_name"`
@@ -26,13 +30,13 @@ type stream struct {
 	AvgFrameRate       string `json:"avg_frame_rate"`
 	TimeBase           string `json:"time_base"`
 	StartPts           int `json:"start_pts"`
-	StartTime          float32 `json:"start_time"`
+	StartTime          string `json:"start_time"`
 	DurationTS         int `json:"duration_ts"`
-	DurationInSeconds  int64 `json:"duration"`
-	BitRate            int `json:"bit_rate"`
-	NBFrames           int `json:"nb_frames"`
-	Disposition        disposition `json:"disposition"`
-	Tags               tags `json:"tags"`
+	DurationInSeconds  string `json:"duration"`
+	BitRate            string `json:"bit_rate"`
+	NBFrames           string `json:"nb_frames"`
+	Disposition        Disposition `json:"disposition"`
+	Tags `json:"tags,array"`
 
 	// Video
 	Width              int `json:"width"`
@@ -44,57 +48,72 @@ type stream struct {
 	Level              int `json:"level"`
 	ChromaLocation     string `json:"chroma_location"`
 	Refs               int `json:"refs"`
-	QuarterSample      bool `json:"quarter_sample"`
-	DivxPacked         bool `json:"divx_packed"`
+	QuarterSample      string `json:"quarter_sample"`
+	DivxPacked         string `json:"divx_packed"`
+	Avc                string `json:"is_avc"`
 
 	// Audio
 	SampleFmt          string `json:"sample_fmt"`
-	SampleRate         int `json:"sample_rate"`
+	SampleRate         string `json:"sample_rate"`
 	Channels           int `json:"channels"`
 	ChannelLayout      string `json:"channel_layout"`
 	BitsPerSample      int `json:"bits_per_sample"`
 }
 
-type disposition struct {
-	Default         bool `json:"default"`
-	Dub             bool `json:"dub"`
-	Original        bool `json:"original"`
-	Comment         bool `json:"comment"`
-	Lyrics          bool `json:"lyrics"`
-	Karaoke         bool `json:"karaoke"`
-	Forced          bool `json:"forced"`
-	HearingImpaired bool `json:"hearing_impaired"`
-	VisualImpaired  bool `json:"visual_impaired"`
-	CleanEffects    bool `json:"clean_effects"`
-	AttachedPic     bool `json:"attached_pic"`
+type Disposition struct {
+	Default         int `json:"default"`
+	Dub             int `json:"dub"`
+	Original        int `json:"original"`
+	Comment         int `json:"comment"`
+	Lyrics          int `json:"lyrics"`
+	Karaoke         int `json:"karaoke"`
+	Forced          int `json:"forced"`
+	HearingImpaired int `json:"hearing_impaired"`
+	VisualImpaired  int `json:"visual_impaired"`
+	CleanEffects    int `json:"clean_effects"`
+	AttachedPic     int `json:"attached_pic"`
 }
 
-type chapter struct {
+type Chapter struct {
 	Id        int `json:"id"`
 	TimeBase  string `json:"time_base"`
 	StartPos  int64 `json:"start"`
 	StartTime string `json:"start_time"`
 	EndPos    int64 `json:"end"`
 	EndTime   string `json:"end_time"`
-	Tags      tags `json:"tags"`
+	Tags `json:"tags"`
 }
 
-type format struct {
+type Format struct {
 	File           string `json:"filename"`
 	StreamCount    int `json:"nb_streams"`
 	FormatName     string `json:"format_name"`
 	FormatLongName string `json:"format_long_name"`
-	StartTime      float64 `json:"start_time"`
-	Duration       float64 `json:"duration"`
-	Size           int `json:"size"`
-	BitRate        int `json:"bit_rate"`
+	StartTime      string `json:"start_time"`
+	Duration       string `json:"duration"`
+	Size           string `json:"size"`
+	BitRate        string `json:"bit_rate"`
 	ProbeScore     int `json:"probe_score"`
-	Tags           tags `json:"tags"`
+	Tags `json:"tags"`
 }
 
-type tags struct {
+type Tags struct {
 	Title        string `json:"title"`
 	Lang         string `json:"language"`
 	Encoder      string `json:"encoder"`
 	CreationTime string `json:"creation_time"`
+}
+
+////////////
+// Public //
+////////////
+
+// ParseFFprobeOutput parses the FFprobe output and returns a FFprobeOutput struct.
+func ParseFFprobeOutput(stdout []byte) (FFprobeOutput, error) {
+	var parsedData FFprobeOutput
+	err := json.Unmarshal(stdout, &parsedData)
+	if err != nil {
+		return parsedData, err
+	}
+	return parsedData, nil
 }
