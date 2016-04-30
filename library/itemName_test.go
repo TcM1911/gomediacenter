@@ -3,6 +3,7 @@ package library
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
+	"strconv"
 )
 
 func TestShouldDetermineIfFileIsAVideoFile(t *testing.T) {
@@ -23,5 +24,25 @@ func TestShouldDetermineIfFileIsAVideoFile(t *testing.T) {
 		isVideoFile := IsVideoFile(test.fileName)
 		errorMsg := "Case number " + string(i) + " failed."
 		assert.Equal(t, test.isVideoFile, isVideoFile, errorMsg)
+	}
+}
+
+func TestExtractionOfMInformationFromTheFileName(t *testing.T) {
+	cases := []struct {
+		fileName string
+		title    string
+		year     int
+	}{
+		{`Movie.Name.2016.PROPER.BDRip.x264-GROUP`, "Movie Name", 2016,},
+		{`Movie.Name.2016.BDRip.x264-GROUP`, "Movie Name", 2016,},
+		{`Movie.Name.2015.1080p.BluRay.x264.REPACK-GROUP`, "Movie Name", 2015,},
+		{`Movie.Name.2015.1080p.BluRay.x264-GROUP`, "Movie Name", 2015,},
+	}
+
+	for i, test := range cases {
+		name, year := ParseMovieInfo(test.fileName)
+		errorMsg := "Case number " + strconv.Itoa(i) + " failed."
+		assert.Equal(t, test.title, name, errorMsg)
+		assert.Equal(t, test.year, year, errorMsg)
 	}
 }
