@@ -1,9 +1,10 @@
 package library
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestShouldDetermineIfFileIsAVideoFile(t *testing.T) {
@@ -33,10 +34,10 @@ func TestExtractionOfMInformationFromTheFileName(t *testing.T) {
 		title    string
 		year     int
 	}{
-		{`Movie.Name.2016.PROPER.BDRip.x264-GROUP`, "Movie Name", 2016,},
-		{`Movie.Name.2016.BDRip.x264-GROUP`, "Movie Name", 2016,},
-		{`Movie.Name.2015.1080p.BluRay.x264.REPACK-GROUP`, "Movie Name", 2015,},
-		{`Movie.Name.2015.1080p.BluRay.x264-GROUP`, "Movie Name", 2015,},
+		{`Movie.Name.2016.PROPER.BDRip.x264-GROUP`, "Movie Name", 2016},
+		{`Movie.Name.2016.BDRip.x264-GROUP`, "Movie Name", 2016},
+		{`Movie.Name.2015.1080p.BluRay.x264.REPACK-GROUP`, "Movie Name", 2015},
+		{`Movie.Name.2015.1080p.BluRay.x264-GROUP`, "Movie Name", 2015},
 	}
 
 	for i, test := range cases {

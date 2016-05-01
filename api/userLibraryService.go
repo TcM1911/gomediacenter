@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"log"
+
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
 	"labix.org/v2/mgo"
-	"log"
 )
 
 /////////////
@@ -21,7 +22,7 @@ type movieResponse struct {
 
 type introResponse struct {
 	Intros *[]gomediacenter.Intro `json:"Items,array,omitempty"`
-	Count  int `json:"TotalRecordCount"`
+	Count  int                    `json:"TotalRecordCount"`
 }
 
 ////////////

@@ -1,19 +1,20 @@
 package library
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMatchToSDMovieRegex(t *testing.T) {
 	tests := []struct {
 		Folder string
-		Title string
-		Year int
+		Title  string
+		Year   int
 		Source string
-		Codec string
-		Tags []string
+		Codec  string
+		Tags   []string
 	}{
 		{"Movie.Name.2016.PROPER.BDRip.x264-GROUP",
 			"Movie Name", 2016, "BDRip", "x264", []string{"PROPER"}},
@@ -37,11 +38,11 @@ func TestMatchToSDMovieRegex(t *testing.T) {
 
 func TestMatchToHDMovieRegex(t *testing.T) {
 	tests := []struct {
-		Folder string
-		Title string
-		Year int
+		Folder     string
+		Title      string
+		Year       int
 		Resolution string
-		Tags []string
+		Tags       []string
 	}{
 		{"Movie.Name.2016.720p.BluRay.x264.READ.NFO-GROUP",
 			"Movie Name", 2016, "720p", []string{"READ.NFO"}},

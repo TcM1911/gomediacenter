@@ -1,15 +1,16 @@
 package api
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/tcm1911/gomediacenter"
-	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/tcm1911/gomediacenter"
+	"gopkg.in/mgo.v2/bson"
 	"labix.org/v2/mgo"
 )
 
@@ -32,7 +33,7 @@ func init() {
 	videoSource.Path = "/path/to/file.mkv"
 	videoSource.Container = "mkv"
 	videoSource.MediaStreams = []interface{}{vStream, aStream}
-	videoSource.Chapters = []gomediacenter.Chapter{{Name: "Chapter 1", StartPos: 0}, {Name: "Chapter 2", StartPos: 2000},}
+	videoSource.Chapters = []gomediacenter.Chapter{{Name: "Chapter 1", StartPos: 0}, {Name: "Chapter 2", StartPos: 2000}}
 
 	id := bson.NewObjectId()
 	video := new(gomediacenter.Video)

@@ -42,7 +42,7 @@ var hdMovieRegex = regexp.MustCompile(`([\w*\.*]*)\.(\d{4})\.(720p|1080p)\.BluRa
 var acceptedTags []string = []string{"REAL", "PROPER", "REPACK", "RERIP",
 	"WS", "FS", "RETAIL", "EXTENDED", "REMASTERED", "RATED", "UNRATED",
 	"CHRONO", "THEATRICAL", "DC", "SE", "UNCUT", "INTERNAL", "DUBBED",
-	"SUBBED", "FINAL", "COLORIZED", "FESTIVAL", "STV", "LIMITED", "TV", "READ.NFO",}
+	"SUBBED", "FINAL", "COLORIZED", "FESTIVAL", "STV", "LIMITED", "TV", "READ.NFO"}
 
 /////////////
 // Structs //

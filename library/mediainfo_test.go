@@ -1,9 +1,10 @@
 package library
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 ///////////

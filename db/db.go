@@ -2,10 +2,11 @@ package db
 
 import (
 	"errors"
+	"log"
+
 	"github.com/tcm1911/gomediacenter"
 	"gopkg.in/mgo.v2"
 	"labix.org/v2/mgo/bson"
-	"log"
 )
 
 ///////////////
