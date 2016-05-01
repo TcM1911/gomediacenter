@@ -21,6 +21,9 @@ func ParseMovieInfo(s string) (string, int) {
 	if name, year := matchSceneRegex(s); name != "" && year != 0 {
 		return name, year
 	}
+
+	// TODO: Support for Kodi Library.
+
 	return "", 0
 }
 
