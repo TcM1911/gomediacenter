@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-// ffprobe cmd: ffprobe -v quiet -show_chapters -print_format json -show_format -show_streams file.mkv
+// ffprobe libraryd: ffprobe -v quiet -show_chapters -print_format json -show_format -show_streams file.mkv
 
 /////////////
 // Structs //

@@ -1300,19 +1300,19 @@ func NewAPIRouter() *(mux.Router) {
 	//[ApiMember(Name = "Id", Description = "Session Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
 	//[ApiMember(Name = "SeekPositionTicks", Description = "The position to seek to.", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "POST")]
 	//[ApiMember(Name = "Command", Description = "The command to send - stop, pause, unpause, nexttrack, previoustrack, seek, fullscreen.", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	sessionsRouter.HandleFunc("/{id}/Playing/{cmd}", notYetImplemented).Methods("POST")
+	sessionsRouter.HandleFunc("/{id}/Playing/{libraryd}", notYetImplemented).Methods("POST")
 
 	//[Route("/Sessions/{Id}/System/{Command}", "POST", Summary = "Issues a system command to a client")]
 	//[Authenticated]
 	//[ApiMember(Name = "Id", Description = "Session Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
 	//[ApiMember(Name = "Command", Description = "The command to send.", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	sessionsRouter.HandleFunc("/{id}/System/{cmd}", notYetImplemented).Methods("POST")
+	sessionsRouter.HandleFunc("/{id}/System/{libraryd}", notYetImplemented).Methods("POST")
 
 	//[Route("/Sessions/{Id}/Command/{Command}", "POST", Summary = "Issues a system command to a client")]
 	//[Authenticated]
 	//[ApiMember(Name = "Id", Description = "Session Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
 	//[ApiMember(Name = "Command", Description = "The command to send.", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	sessionsRouter.HandleFunc("/{id}/Command/{cmd}", notYetImplemented).Methods("POST")
+	sessionsRouter.HandleFunc("/{id}/Command/{libraryd}", notYetImplemented).Methods("POST")
 
 	//[Route("/Sessions/{Id}/Command", "POST", Summary = "Issues a system command to a client")]
 	//[Authenticated]

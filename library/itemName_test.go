@@ -47,3 +47,20 @@ func TestExtractionOfMInformationFromTheFileName(t *testing.T) {
 		assert.Equal(t, test.year, year, errorMsg)
 	}
 }
+
+func TestGetRelativePath(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct{ abs, libroot, rel string }{
+		{"/abs/lib/path/action/movie.mkv", "/abs/lib/path", "action/movie.mkv"},
+		{"/abs/lib/path/action/movie.mkv", "/abs/lib/path/", "action/movie.mkv"},
+	}
+
+	for _, test := range tests {
+		rel, err := GetRelativePath(test.abs, test.libroot)
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(test.rel, rel)
+	}
+}
