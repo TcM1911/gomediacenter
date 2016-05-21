@@ -14,10 +14,10 @@ type IMDBMetadataDownloader interface {
 type MetadataDownloader struct {
 }
 
-func (d *MetadataDownloader) SearchIMDBTitle(c *http.Client, title string) ([]imdb.Title, error) {
+func (d MetadataDownloader) SearchIMDBTitle(c *http.Client, title string) ([]imdb.Title, error) {
 	return imdb.SearchTitle(c, title)
 }
 
-func (d *MetadataDownloader) NewIMDBTitle(c *http.Client, id string) (*imdb.Title, error) {
+func (d MetadataDownloader) NewIMDBTitle(c *http.Client, id string) (*imdb.Title, error) {
 	return imdb.NewTitle(c, id)
 }

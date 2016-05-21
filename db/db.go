@@ -6,7 +6,7 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"gopkg.in/mgo.v2"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 ///////////////

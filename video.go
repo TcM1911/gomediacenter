@@ -1,11 +1,6 @@
 package gomediacenter
 
-import "gopkg.in/mgo.v2/bson"
-
 type Video struct {
-	Name         string        `json:"Name"`
-	SortName     string        `json:"SortName"`
-	Id           bson.ObjectId `json:"Id"`
 	Etage        string        `json:"Etage,omitempty"`
 	CanDelete    bool          `json:"CanDelete"`
 	CanDownload  bool          `json:"CanDownload"`
@@ -24,7 +19,6 @@ type Studio struct {
 
 type VideoSource struct {
 	Protocol              string        `json:"Protocol"`
-	Path                  string        `json:"Path"`
 	Type                  string        `json:"Type"`
 	Container             string        `json:"Container"`
 	Name                  string        `json:"Name"`
@@ -48,15 +42,15 @@ type VideoStream struct {
 	Codec                  string  `json:"Codec"`
 	Lang                   string  `json:"Language"`
 	Interlaced             bool    `json:"IsInterlaced"`
-	BitRate                int     `json:"BitRate"`
+	BitRate                int64   `json:"BitRate"`
 	BitDepth               int     `json:"BitDepth"`
 	RefFrames              int     `json:"RefFrames"`
 	Default                bool    `json:"IsDefault"`
 	Forced                 bool    `json:"IsForced"`
 	Height                 int     `json:"Height"`
 	Width                  int     `json:"Width"`
-	AverageFrameRate       float32 `json:"AverageFrameRate"`
-	FrameRate              float32 `json:"RealFrameRate"`
+	AverageFrameRate       float64 `json:"AverageFrameRate"`
+	FrameRate              float64 `json:"RealFrameRate"`
 	Profile                string  `json:"Profile"`
 	Type                   string  `json:"Type"`
 	AspectRatio            string  `json:"AspectRatio"`
@@ -71,7 +65,7 @@ type VideoStream struct {
 }
 
 type Chapter struct {
-	StartPos int    `json:"StartPositionTicks"`
+	StartPos int64  `json:"StartPositionTicks"`
 	Name     string `json:"Name"`
 }
 

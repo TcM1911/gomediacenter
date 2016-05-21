@@ -16,22 +16,20 @@ import (
 
 type fileJob struct {
 	file      string
-	medaiType gomediacenter.MEDIATYPE
+	mediaType gomediacenter.MEDIATYPE
 	library   db.Library
 	libPath   string
 }
 
 func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
-
-	// Before we start the scan, let's make sure we have the newest config of this library
+	// Before we start the scan, let's make sure we have the newest config for this library.
 	err := fetchLibraryDataFromDB(libId)
 	if err != nil {
 		log.Println("Error when getting the latest library data.", err)
 	}
-
 	LIBRARY := getCopyOfLibrary(libId)
 
-	// Create a workers pool
+	// Create a worker pool
 	var workers sync.WaitGroup
 	jobChan := make(chan fileJob, *numWorkers)
 
@@ -46,11 +44,14 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 	// Determine the folder type: Movies, TV shows, Music, etc.
 	mediaType := LIBRARY.Type
 
+	// Walk the library folder and process each file.
 	filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Println(err, "when scanning scanning", folder)
 			return err
 		}
+		// If we find a folder, log if we are being verbose before continue with the
+		// next file.
 		if info.IsDir() {
 			if *verbose {
 				log.Println("Scanning", path)
@@ -58,23 +59,26 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 			return nil
 		}
 
-		// Only start processing another file if the daemon is still running.
+		// If we have a file, only start processing
+		// if the daemon is still running and not in shutdown mode.
 		runningMutex.RLock()
 		defer runningMutex.RUnlock()
 		if running && library.IsVideoFile(path) {
-			jobChan <- fileJob{file: path, medaiType: mediaType, libPath: folder, library: LIBRARY}
+			// Wait for a worker to become available and send the job.
+			jobChan <- fileJob{file: path, mediaType: mediaType,
+				libPath: folder, library: LIBRARY}
 		}
-
 		return nil
 	})
 
 	// All work has been dispatched. Tell the workers and wait for them to finish.
 	if *verbose {
-		log.Println("Waiting for workers to finish.")
+		log.Println("Waiting for workers to finish processing files.")
 	}
 	close(jobChan)
 	workers.Wait()
-	log.Println("Scan of", folder, "complete.")
+	log.Println("Scanning for new items in", folder, "complete.")
+	// TODO: Start purge scan to remove removed files from the library.
 	complete <- struct{}{}
 }
 
@@ -88,6 +92,7 @@ func scanWorker(pool *sync.WaitGroup, jobs <-chan fileJob) {
 		if *verbose {
 			log.Println("Processing", job.file)
 		}
+		// Use the movieFileProcessor if we are processing files in a movie library.
 		if job.library.Type == gomediacenter.MOVIE {
 			movieFileProcessor(job)
 		} else {

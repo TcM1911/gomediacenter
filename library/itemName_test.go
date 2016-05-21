@@ -38,6 +38,7 @@ func TestExtractionOfMInformationFromTheFileName(t *testing.T) {
 		{`Movie.Name.2016.BDRip.x264-GROUP`, "Movie Name", 2016},
 		{`Movie.Name.2015.1080p.BluRay.x264.REPACK-GROUP`, "Movie Name", 2015},
 		{`Movie.Name.2015.1080p.BluRay.x264-GROUP`, "Movie Name", 2015},
+		{`/mnt/library/2.Guns.2013.BDRip.X264-SPARKS.mkv`, "2 Guns", 2013},
 	}
 
 	for i, test := range cases {

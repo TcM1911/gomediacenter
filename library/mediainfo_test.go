@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"strconv"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/tcm1911/gomediacenter"
 )
 
 ///////////
@@ -139,6 +142,89 @@ func TestParseFFprobeOutputOfAviFile(t *testing.T) {
 	assert.Equal(2, audioStream.Channels)
 	assert.Equal("stereo", audioStream.ChannelLayout)
 	assert.Equal("3/125", audioStream.TimeBase)
+}
+
+func TestConvertFFprobeChapter(t *testing.T) {
+	expected := []gomediacenter.Chapter{
+		{Name: "Chapter 1", StartPos: int64(0)},
+		{Name: "Chapter 2", StartPos: int64(2)},
+	}
+	ffprobeChapter := []Chapter{{StartPos: int64(0)}, {StartPos: int64(2)}}
+
+	actual := ConvertFFprobeChapter(ffprobeChapter)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestConvertFFprobeStream(t *testing.T) {
+	videoStream := Stream{
+		Index:              0,
+		CodecName:          "h264",
+		Profile:            "High",
+		Type:               "video",
+		Width:              720,
+		Height:             300,
+		HasBFrames:         2,
+		SampleAspectRatio:  "1:1",
+		DisplayAspectRatio: "12:5",
+		PixFmt:             "yuv420p",
+		Level:              31,
+		ChromaLocation:     "left",
+		Refs:               5,
+		Avc:                "true",
+		FrameRate:          "13978/583",
+		AvgFrameRate:       "13978/583",
+		TimeBase:           "1/1000",
+		StartPts:           0,
+		StartTime:          "0.000000",
+		//BitRate:            "1346920",
+	}
+
+	frmRate, _ := strconv.ParseFloat("13978/583", 64)
+	expectedVideoStream := gomediacenter.VideoStream{
+		Type:        "Video",
+		Index:       0,
+		Codec:       "h264",
+		Profile:     "High",
+		Width:       720,
+		Height:      300,
+		AspectRatio: "12:5",
+		//BitRate:          int64(1346920),
+		RefFrames:        5,
+		AverageFrameRate: frmRate,
+		FrameRate:        frmRate,
+		PixelFormat:      "yuv420p",
+		Level:            31,
+	}
+
+	audioStream := Stream{
+		Index:         1,
+		CodecName:     "aac",
+		Profile:       "LC",
+		Type:          "audio",
+		SampleFmt:     "fltp",
+		SampleRate:    "48000",
+		Channels:      2,
+		ChannelLayout: "stereo",
+		TimeBase:      "1/1000",
+	}
+
+	expectedAudioStream := gomediacenter.AudioStream{
+		Index:         1,
+		Codec:         "aac",
+		Profile:       "LC",
+		Type:          "Audio",
+		ChannelLayout: "stereo",
+		Channels:      2,
+		//SampleRate:    48000,
+	}
+
+	ffprobeStreams := []Stream{videoStream, audioStream}
+	expectedStreams := []interface{}{expectedVideoStream, expectedAudioStream}
+
+	actualStreams := ConvertFFprobeStream(ffprobeStreams)
+
+	assert.Equal(t, expectedStreams, actualStreams)
 }
 
 ///////////////////////

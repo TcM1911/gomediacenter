@@ -3,8 +3,6 @@ package main
 import (
 	"bufio"
 	"flag"
-	"github.com/tcm1911/gomediacenter/db"
-	"gopkg.in/mgo.v2/bson"
 	"log"
 	"os"
 	"os/signal"
@@ -12,6 +10,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/tcm1911/gomediacenter/db"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var dbAdr *string = flag.String("dbaddr", "localhost:27017", "Address to the database.")
@@ -19,6 +20,7 @@ var mediaFolder *string = flag.String("path", "pwd", "Path to library folder to 
 var rescan *bool = flag.Bool("rescan", true, "Rescan folder at startup.")
 var verbose *bool = flag.Bool("verbose", false, "More logging.")
 var numWorkers *int = flag.Int("workers", 10, "The number of workers used to process the media files.")
+var interval *int = flag.Int("interval", 5, "The interval between library scans.")
 
 // This variable indicates if the daemon is still running or should be shutdown.
 // This should be checked from time to time during long process and abort if changed to false.
@@ -60,6 +62,10 @@ func main() {
 		AddScanToPoolAndWatch(initialScan)
 	}
 
+	// Start the monitor.
+	shutdownMonitor := make(chan struct{})
+	go monitorFolder(libraryId, *mediaFolder, shutdownMonitor)
+
 	// Shutdown.
 	shutdownComplete := make(chan struct{}, 1)
 	signalChan := make(chan os.Signal, 1)
@@ -70,6 +76,7 @@ func main() {
 		running = false
 		runningMutex.Unlock()
 		log.Println("Waiting for processes to shutdown...")
+		shutdownMonitor <- struct{}{}
 
 		// Waiting for all scans to shutdown.
 		for ActiveScans() {

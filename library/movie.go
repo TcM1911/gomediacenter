@@ -34,10 +34,10 @@ import (
 ////////////
 
 // Example: Movie.Name.YEAR.PROPER/READ.NFO/REPACK.BDRip/DVDRip.x264-GROUP
-var sdMovieRegex = regexp.MustCompile(`([\w*\.*]*)\.(\d{4})\.([\w*\.*]*)\.*(DVDRip|BDRip)\.(Xvid|x264)-\w+`)
+var sdMovieRegex = regexp.MustCompile(`(?i)([\w*\.*]*)\.(\d{4})\.([\w*\.*]*)\.*(DVDRip|BDRip)\.(Xvid|x264)-\w+`)
 
 // Example: Movie.Name.YEAR.<720p/1080p>.BluRay.x264.<PROPER/READ.NFO/REPACK>-GROUP
-var hdMovieRegex = regexp.MustCompile(`([\w*\.*]*)\.(\d{4})\.(720p|1080p)\.BluRay\.x264\.*([\w*\.*]*)-\w+`)
+var hdMovieRegex = regexp.MustCompile(`(?i)([\w*\.*]*)\.(\d{4})\.(720p|1080p)\.BluRay\.x264\.*([\w*\.*]*)-\w+`)
 
 var acceptedTags []string = []string{"REAL", "PROPER", "REPACK", "RERIP",
 	"WS", "FS", "RETAIL", "EXTENDED", "REMASTERED", "RATED", "UNRATED",

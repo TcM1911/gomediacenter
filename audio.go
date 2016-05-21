@@ -5,7 +5,7 @@ type AudioStream struct {
 	Lang                   string `json:"Language"`
 	Interlaced             bool   `json:"IsInterlaced"`
 	ChannelLayout          string `json:"ChannelLayout"`
-	BitRate                int    `json:"BitRate"`
+	BitRate                int64  `json:"BitRate"`
 	Channels               int    `json:"Channels"`
 	SampleRate             int    `json:"SampleRate"`
 	Default                bool   `json:"IsDefault"`
