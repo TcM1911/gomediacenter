@@ -16,6 +16,7 @@ type Library struct {
 	Type        gomediacenter.MEDIATYPE `bson:"type"`
 }
 
+// Creates a new library and returns a struct of it.
 func NewLibrary(name string, libraryType gomediacenter.MEDIATYPE) (*Library, error) {
 	id := bson.NewObjectId()
 	library := &Library{Name: name, Id: id, Type: libraryType}
@@ -29,6 +30,7 @@ func NewLibrary(name string, libraryType gomediacenter.MEDIATYPE) (*Library, err
 	return library, nil
 }
 
+// Returns the library by id.
 func GetLibraryById(id bson.ObjectId) (*Library, error) {
 	session := GetDBSession()
 	defer session.Close()
@@ -40,6 +42,7 @@ func GetLibraryById(id bson.ObjectId) (*Library, error) {
 	return &lib, nil
 }
 
+// Updates the time the library was lasted scanned.
 func UpdateLibraryLastScannedTime(id bson.ObjectId, time time.Time) error {
 	session := GetDBSession()
 	defer session.Close()
