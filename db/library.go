@@ -1,9 +1,12 @@
 package db
 
 import (
-	"github.com/tcm1911/gomediacenter"
-	"gopkg.in/mgo.v2/bson"
+	"errors"
 	"time"
+
+	"github.com/tcm1911/gomediacenter"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Library struct {
@@ -45,4 +48,37 @@ func UpdateLibraryLastScannedTime(id bson.ObjectId, time time.Time) error {
 		return err
 	}
 	return nil
+}
+
+// Removes items not listed in the items map. The items map contains the relative path of the
+// files to keep. The function returns a slice of the items removed.
+func PruneMissingItemsFromLibrary(items map[string]struct{}, libId string, libType gomediacenter.MEDIATYPE) ([]string, error) {
+	session := GetDBSession()
+	defer session.Close()
+
+	var removedItems []string
+
+	db := session.DB(DATABASE_NAME)
+	var C *mgo.Collection
+	switch libType {
+	case gomediacenter.MOVIE:
+		C = db.C(MOVIE_COLLECTION)
+		var result gomediacenter.Movie
+
+		q := bson.M{"parentId": libId}
+		iterator := C.Find(q).Iter()
+
+		for iterator.Next(&result) {
+			path := result.Path
+			if _, exist := items[path]; !exist {
+				if err := C.RemoveId(result.Id); err != nil {
+					return removedItems, err
+				}
+				removedItems = append(removedItems, path)
+			}
+		}
+	default:
+		return removedItems, errors.New("incorrect collection type")
+	}
+	return removedItems, nil
 }

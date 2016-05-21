@@ -10,6 +10,25 @@ import (
 	"github.com/tcm1911/gomediacenter/library"
 )
 
+// This function checks all items in the library against the files in the library folder.
+// If an item exist in the database but no file was found, the item is removed.
+// This is used to remove old items.
+func purneLibrary(files map[string]struct{}, parentId string, mediaType gomediacenter.MEDIATYPE) {
+	log.Println("Pruning dead items from the library.")
+
+	// Get all items in the library and check if the file was walked.
+	removedItems, err := db.PruneMissingItemsFromLibrary(files, parentId, mediaType)
+	if err != nil {
+		log.Println("Pruning the database failed because", err)
+	}
+
+	if *verbose {
+		for _, item := range removedItems {
+			log.Println(item, "pruned from the database.")
+		}
+	}
+}
+
 func movieFileProcessor(job fileJob) {
 	parentId := job.library.Id
 

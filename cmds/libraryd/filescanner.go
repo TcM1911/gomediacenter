@@ -44,6 +44,9 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 	// Determine the folder type: Movies, TV shows, Music, etc.
 	mediaType := LIBRARY.Type
 
+	// Map to hold walked files in this library.
+	files := make(map[string]struct{})
+
 	// Walk the library folder and process each file.
 	filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -67,6 +70,10 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 			// Wait for a worker to become available and send the job.
 			jobChan <- fileJob{file: path, mediaType: mediaType,
 				libPath: folder, library: LIBRARY}
+			// Add the file to the walked files slice.
+			if file, err := library.GetRelativePath(path, folder); err == nil {
+				files[file] = struct{}{}
+			}
 		}
 		return nil
 	})
@@ -78,7 +85,9 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 	close(jobChan)
 	workers.Wait()
 	log.Println("Scanning for new items in", folder, "complete.")
-	// TODO: Start purge scan to remove removed files from the library.
+	// Prune dead items in the library.
+	purneLibrary(files, LIBRARY.Id.Hex(), LIBRARY.Type)
+	log.Println("Library pruning complete.")
 	complete <- struct{}{}
 }
 
