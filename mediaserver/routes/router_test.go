@@ -1,4 +1,4 @@
-package api_test
+package routes_test
 
 import (
 	"fmt"
@@ -7,13 +7,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tcm1911/gomediacenter/api"
+	"github.com/tcm1911/gomediacenter/mediaserver/routes"
 )
 
 var SERVER_URL string
 
 func init() {
-	handler := api.NewAPIRouter()
+	handler := routes.NewAPIRouter()
 	server := httptest.NewServer(handler)
 	SERVER_URL = server.URL
 }

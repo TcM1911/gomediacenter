@@ -1,4 +1,4 @@
-package api
+package controllers
 
 import (
 	"encoding/json"
@@ -31,7 +31,7 @@ type introResponse struct {
 // UserItemHandler gets an item from a user's library.
 // Path vars are uid and id.
 func UserItemHandler(w http.ResponseWriter, r *http.Request) {
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	pathVars := mediaserver.GetContextVar(r, "pathVars").(map[string]string)
 	// TODO: Add user restriction. Need to check if the user is allowed to view this item.
 	uid := pathVars["uid"]
 	id := pathVars["id"]

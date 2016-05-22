@@ -1,4 +1,4 @@
-package api
+package controllers
 
 import (
 	"io/ioutil"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
 	"gopkg.in/mgo.v2/bson"
-	"labix.org/v2/mgo"
+	"gopkg.in/mgo.v2"
 )
 
 ///////////

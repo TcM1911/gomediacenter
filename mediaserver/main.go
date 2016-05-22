@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
+	"log"
 	"time"
 
 	"github.com/stretchr/graceful"
-	"github.com/tcm1911/gomediacenter/api"
 	"github.com/tcm1911/gomediacenter/db"
-	"log"
+	"github.com/tcm1911/gomediacenter/mediaserver/routes"
 )
 
 func main() {
@@ -24,7 +24,9 @@ func main() {
 	defer db.Disconnect()
 
 	// API server.
-	mux := api.NewAPIRouter()
+	mux := routes.NewAPIRouter()
 	log.Println("Serving API on", *addr)
 	graceful.Run(*addr, 3*time.Second, mux)
+
+	log.Println("Stopping...")
 }
