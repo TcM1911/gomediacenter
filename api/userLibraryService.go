@@ -2,13 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"net/http"
-
 	"log"
+	"net/http"
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
-	"labix.org/v2/mgo"
+	"gopkg.in/mgo.v2"
 )
 
 /////////////
