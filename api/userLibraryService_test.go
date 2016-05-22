@@ -30,20 +30,20 @@ func init() {
 	aStream.Channels = 2
 
 	videoSource := new(gomediacenter.VideoSource)
-	videoSource.Path = "/path/to/file.mkv"
 	videoSource.Container = "mkv"
 	videoSource.MediaStreams = []interface{}{vStream, aStream}
 	videoSource.Chapters = []gomediacenter.Chapter{{Name: "Chapter 1", StartPos: 0}, {Name: "Chapter 2", StartPos: 2000}}
 
 	id := bson.NewObjectId()
-	video := new(gomediacenter.Video)
-	video.Name = "Test Movie Title"
-	video.Id = id
+	video := gomediacenter.Video{}
 	video.MediaSources = []interface{}{videoSource}
 
 	actor := gomediacenter.Person{Id: "id", Name: "Actor name", Role: "Actor"}
 
 	movie = new(gomediacenter.Movie)
+	movie.Path = "/path/to/file.mkv"
+	movie.Name = "Test Movie Title"
+	movie.Id = id
 	movie.Video = video
 	movie.ImdbId = "imdbID"
 	movie.People = []gomediacenter.Person{actor}

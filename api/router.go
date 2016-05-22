@@ -7,7 +7,7 @@ import (
 )
 
 func notYetImplemented(rw http.ResponseWriter, req *http.Request) {
-	rw.WriteHeader(http.StatusInternalServerError)
+	rw.WriteHeader(http.StatusNotImplemented)
 	rw.Write([]byte("Not yet implemented"))
 }
 
