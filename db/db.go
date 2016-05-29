@@ -31,8 +31,8 @@ type DB struct {
 var db *DB
 
 type mediaType struct {
-	id    bson.ObjectId `bson:"_id"`
-	media gomediacenter.MEDIATYPE
+	Id    bson.ObjectId           `bson:"_id"`
+	Media gomediacenter.MEDIATYPE `bson:"media"`
 }
 
 ////////////
@@ -62,6 +62,10 @@ func (d *DB) Close() {
 	db.session.Close()
 }
 
+func GetDB() *DB {
+	return db
+}
+
 // GetDBSession returns a copy of the database session.
 func GetDBSession() *mgo.Session {
 	if db == nil {
@@ -76,17 +80,17 @@ func (d *DB) FindItemById(id string) (gomediacenter.MEDIATYPE, interface{}, erro
 
 	var mediatype mediaType
 	if err := q.One(&mediatype); err != nil {
-		return mediatype.media, nil, err
+		return mediatype.Media, nil, err
 	}
 
-	if mediatype.media == gomediacenter.MOVIE {
+	if mediatype.Media == gomediacenter.MOVIE {
 		movie, err := findMovieById(d, id)
 		if err != nil {
-			return mediatype.media, nil, err
+			return mediatype.Media, nil, err
 		}
-		return mediatype.media, movie, nil
+		return mediatype.Media, movie, nil
 	}
-	return mediatype.media, nil, errors.New("no match")
+	return mediatype.Media, nil, errors.New("no match")
 }
 
 // FindItemUserData gets the user data for an item.
@@ -96,10 +100,11 @@ func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, 
 	var itemUserData *gomediacenter.ItemUserData
 	err := q.One(&itemUserData)
 	if err == mgo.ErrNotFound {
+		// Return a new struct.
 		return gomediacenter.NewItemUserData(itemId, uid), nil
 	}
 	if err != nil {
-		return itemUserData, err
+		return nil, err
 	}
 	return itemUserData, nil
 }
@@ -109,4 +114,25 @@ func (d *DB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
 	// TODO: Add support for intros
 	var intros []gomediacenter.Intro
 	return &intros, mgo.ErrNotFound
+}
+
+// Inserts an item into the media type collection.
+func InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error {
+	session := GetDBSession()
+	dbMediaType := &mediaType{Id: id, Media: gomediaType}
+	err := session.DB(DATABASE_NAME).C(MEDIATYPE_COLLECTION).Insert(dbMediaType)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Removes an item into the media type collection.
+func RemoveItemType(id bson.ObjectId) error {
+	session := GetDBSession()
+	err := session.DB(DATABASE_NAME).C(MEDIATYPE_COLLECTION).RemoveId(id)
+	if err != nil {
+		return err
+	}
+	return nil
 }

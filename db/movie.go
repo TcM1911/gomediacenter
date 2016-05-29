@@ -23,6 +23,11 @@ func InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
 	if err != nil {
 		return id, err
 	}
+
+	if err := InsertItemType(id, gomediacenter.MOVIE); err != nil {
+		return id, err
+	}
+
 	return id, nil
 }
 
