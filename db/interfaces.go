@@ -27,3 +27,8 @@ type ItemUserData interface {
 	InsertItemUserData(uid, itemId string) error
 	DeleteItemUserData(uid, itemId string) error
 }
+
+// UserManager can create, update, and remove user profiles.
+type UserManager interface {
+	AddNewUser(user *gomediacenter.User) error
+}

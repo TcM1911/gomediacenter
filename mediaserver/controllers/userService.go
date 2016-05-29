@@ -1,4 +1,12 @@
-package api
+package controllers
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/tcm1911/gomediacenter"
+	"github.com/tcm1911/gomediacenter/db"
+)
 
 //[Route("/Users", "GET", Summary = "Gets a list of users")]
 //[Authenticated]
@@ -46,9 +54,28 @@ package api
 //[Authenticated]
 //[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
 
-//[Route("/Users/New", "POST", Summary = "Creates a user")]
-//[Authenticated(Roles = "Admin")]
-//[ApiMember(Name = "Name", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
+// NewUser creates a user. The name of the user to be created is passed as the
+// parameter Name in the POST body.
+func NewUser(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("Name")
+	if name == "" {
+		http.Error(w, "No username given", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("Creating a new user named:", name)
+	user := gomediacenter.NewUser(name)
+
+	db := GetContextVar(r, "db").(db.UserManager)
+	if err := db.AddNewUser(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("Error when saving the new user to the database:", err)
+		return
+	}
+
+	// Return the user in the response body. This is how Emby does it.
+	writeJsonBody(w, user)
+}
 
 //[Route("/Users/ForgotPassword", "POST", Summary = "Initiates the forgot password process for a local user")]
 //[ApiMember(Name = "EnteredUsername", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]

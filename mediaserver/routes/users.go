@@ -22,6 +22,12 @@ func newUsersRouter(router *mux.Router) {
 	//[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
 	usersRouter.HandleFunc("/Public", notYetImplemented).Methods("GET")
 
+	// POST to the route /Users/New creates a new user. This action requires
+	// admin status. The username is sent in the body with the parameter name of 'Name'.
+	usersRouter.HandleFunc("/New", middleware.WithContext(
+		middleware.WithDB(
+			controllers.NewUser))).Methods("POST")
+
 	//[Route("/Users/{Id}", "GET", Summary = "Gets a user by Id")]
 	//[Authenticated(EscapeParentalControl = true)]
 	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
@@ -69,11 +75,6 @@ func newUsersRouter(router *mux.Router) {
 	//[Authenticated]
 	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
 	usersRouter.HandleFunc("/{id}/Configuration", notYetImplemented).Methods("POST")
-
-	//[Route("/Users/New", "POST", Summary = "Creates a user")]
-	//[Authenticated(Roles = "Admin")]
-	//[ApiMember(Name = "Name", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/New", notYetImplemented).Methods("POST")
 
 	//[Route("/Users/ForgotPassword", "POST", Summary = "Initiates the forgot password process for a local user")]
 	//[ApiMember(Name = "EnteredUsername", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]

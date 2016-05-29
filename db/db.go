@@ -16,6 +16,7 @@ const (
 	DATABASE_NAME             = "gomedia"
 	MEDIATYPE_COLLECTION      = "mediatypes"
 	MOVIE_COLLECTION          = "movies"
+	USER_COLLECTION           = "users"
 	ITEM_USER_DATA_COLLECTION = "itemuserdata"
 	LIBRARY_COLLECTION        = "library"
 )
@@ -63,7 +64,8 @@ func (d *DB) Close() {
 }
 
 func GetDB() *DB {
-	return db
+	newSession := GetDBSession()
+	return &DB{session: newSession}
 }
 
 // GetDBSession returns a copy of the database session.
@@ -119,6 +121,8 @@ func (d *DB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
 // Inserts an item into the media type collection.
 func InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error {
 	session := GetDBSession()
+	defer session.Close()
+
 	dbMediaType := &mediaType{Id: id, Media: gomediaType}
 	err := session.DB(DATABASE_NAME).C(MEDIATYPE_COLLECTION).Insert(dbMediaType)
 	if err != nil {
@@ -130,6 +134,8 @@ func InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error
 // Removes an item into the media type collection.
 func RemoveItemType(id bson.ObjectId) error {
 	session := GetDBSession()
+	defer session.Close()
+
 	err := session.DB(DATABASE_NAME).C(MEDIATYPE_COLLECTION).RemoveId(id)
 	if err != nil {
 		return err
