@@ -31,36 +31,46 @@ type introResponse struct {
 // UserItemHandler gets an item from a user's library.
 // Path vars are uid and id.
 func UserItemHandler(w http.ResponseWriter, r *http.Request) {
-	pathVars := mediaserver.GetContextVar(r, "pathVars").(map[string]string)
+
+	log.Println("Handeling GET request for", r.URL)
+
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
 	// TODO: Add user restriction. Need to check if the user is allowed to view this item.
 	uid := pathVars["uid"]
 	id := pathVars["id"]
 
 	database := GetContextVar(r, "db").(db.ItemFinder)
 	if database == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("no database found"))
+		http.Error(w, "no database available", http.StatusInternalServerError)
+		return
 	}
 
 	mediaType, media, err := database.FindItemById(id)
+	if err == mgo.ErrNotFound {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error find the item"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	// Get the items user data.
 	itemUserData, err := database.FindItemUserData(uid, id)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error finding user data for the item"))
+		http.Error(w,
+			"Error while searching for user data, "+err.Error(),
+			http.StatusInternalServerError)
 	}
 
 	// Cast media to the right type so we can write the correct response.
-	if mediaType == gomediacenter.MOVIE {
+	if mediaType == gomediacenter.MOVIE && media != nil {
 		movie := media.(*gomediacenter.Movie)
 		writeMovieResponse(w, movie, itemUserData)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
 	}
-
 }
 
 // UserItemIntrosHandler returns a list of intros to play before the main media item plays.
@@ -100,6 +110,7 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 
 func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie, u *gomediacenter.ItemUserData) {
 	res := movieResponse{Movie: m, ItemUserData: u}
+	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
 }
 

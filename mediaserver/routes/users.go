@@ -1,6 +1,10 @@
 package routes
 
-import "github.com/gorilla/mux"
+import (
+	"github.com/gorilla/mux"
+	"github.com/tcm1911/gomediacenter/mediaserver/controllers"
+	"github.com/tcm1911/gomediacenter/mediaserver/middleware"
+)
 
 func newUsersRouter(router *mux.Router) {
 	/*
@@ -139,7 +143,11 @@ func newUsersRouter(router *mux.Router) {
 	//[Route("/Users/{UserId}/Items/{Id}", "GET", Summary = "Gets an item from a user's library")]
 	//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
 	//[ApiMember(Name = "Id", Description = "Item Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-	usersRouter.HandleFunc("/{uid}/Items/{id}", notYetImplemented).Methods("GET")
+	usersRouter.HandleFunc("/{uid}/Items/{id}",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.WithDB(
+					controllers.UserItemHandler)))).Methods("GET")
 
 	//[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
 	//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
