@@ -28,10 +28,12 @@ func newUsersRouter(router *mux.Router) {
 		middleware.WithDB(
 			controllers.NewUser))).Methods("POST")
 
-	//[Route("/Users/{Id}", "GET", Summary = "Gets a user by Id")]
-	//[Authenticated(EscapeParentalControl = true)]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-	usersRouter.HandleFunc("/{id}", notYetImplemented).Methods("GET")
+	// GET to the route /Users/{uid} returns the data about a user. This actions
+	// requires admin status or being login as the user.
+	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.WithDB(
+				controllers.GetUserById)))).Methods("GET")
 
 	//[Route("/Users/{Id}/Offline", "GET", Summary = "Gets an offline user record by Id")]
 	//[Authenticated]

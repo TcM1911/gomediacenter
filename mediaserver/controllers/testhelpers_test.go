@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"io/ioutil"
+	"net/http/httptest"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
 )
@@ -32,4 +35,21 @@ func (m *mockDB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
 func (m *mockDB) AddNewUser(user *gomediacenter.User) error {
 	args := m.Called(user)
 	return args.Error(0)
+}
+
+func (m *mockDB) GetUserById(s string) (*gomediacenter.User, error) {
+	args := m.Called(s)
+	return args.Get(0).(*gomediacenter.User), args.Error(1)
+}
+
+//////////////////////
+// Helper functions //
+//////////////////////
+
+func getBodyStringFromRecorder(recorder *httptest.ResponseRecorder) (string, error) {
+	p, err := ioutil.ReadAll(recorder.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(p), nil
 }

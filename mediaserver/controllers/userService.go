@@ -6,6 +6,8 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 //[Route("/Users", "GET", Summary = "Gets a list of users")]
@@ -16,9 +18,30 @@ import (
 
 //[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
 
-//[Route("/Users/{Id}", "GET", Summary = "Gets a user by Id")]
-//[Authenticated(EscapeParentalControl = true)]
-//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
+// GetUserById gets a user by Id. Route: /Users/{uid}.
+// Can only be accessed by the authenticated user or admin.
+func GetUserById(w http.ResponseWriter, r *http.Request) {
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	uid := pathVars["uid"]
+
+	if !bson.IsObjectIdHex(uid) {
+		http.Error(w, "not a valid id", http.StatusBadRequest)
+		return
+	}
+
+	db := GetContextVar(r, "db").(db.UserManager)
+
+	user, err := db.GetUserById(uid)
+	if err == mgo.ErrNotFound {
+		http.Error(w, "no user with that id", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		http.Error(w, "error serving the request", http.StatusInternalServerError)
+		log.Println("Error while retrieving the user", uid, ":", err)
+		return
+	}
+	writeJsonBody(w, user)
+}
 
 //[Route("/Users/{Id}/Offline", "GET", Summary = "Gets an offline user record by Id")]
 //[Authenticated]

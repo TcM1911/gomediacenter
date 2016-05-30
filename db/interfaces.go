@@ -31,4 +31,5 @@ type ItemUserData interface {
 // UserManager can create, update, and remove user profiles.
 type UserManager interface {
 	AddNewUser(user *gomediacenter.User) error
+	GetUserById(hexString string) (*gomediacenter.User, error)
 }

@@ -60,7 +60,7 @@ func Disconnect() {
 
 // Close closes the database connection.
 func (d *DB) Close() {
-	db.session.Close()
+	d.session.Close()
 }
 
 func GetDB() *DB {

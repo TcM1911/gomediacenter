@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/tcm1911/gomediacenter"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestNewUser(t *testing.T) {
@@ -31,11 +32,10 @@ func TestNewUser(t *testing.T) {
 	writer := httptest.NewRecorder()
 	NewUser(writer, req)
 
-	p, err := ioutil.ReadAll(writer.Body)
+	body, err := getBodyStringFromRecorder(writer)
 	if err != nil {
-		assert.Fail("Error reading the body")
+		assert.Fail("Could not read the body.")
 	}
-	body := string(p)
 
 	assert.Contains(body, `"Name":"testUser"`)
 
@@ -74,4 +74,40 @@ func TestNewUser(t *testing.T) {
 	assert.Contains(body, `"EnableSyncTranscoding":true`)
 	assert.Contains(body, `"InvalidLoginAttemptCount":0`)
 	assert.Contains(body, `"EnablePublicSharing":true`)
+}
+
+func TestGetUserById(t *testing.T) {
+	assert := assert.New(t)
+
+	// Create test user.
+	user := gomediacenter.NewUser("testUser")
+	uid := bson.NewObjectId()
+	user.Id = uid
+
+	// Request
+	r, _ := http.NewRequest("GET", "/", nil)
+	OpenContext(r)
+
+	// Setup db mock.
+	db := new(mockDB)
+	db.On("GetUserById", uid.Hex()).Return(user, nil)
+	SetContextVar(r, "db", db)
+
+	// Setup pathVars
+	pathVars := make(map[string]string)
+	pathVars["uid"] = uid.Hex()
+	SetContextVar(r, "pathVars", pathVars)
+
+	recorder := httptest.NewRecorder()
+
+	// Call http handler.
+	GetUserById(recorder, r)
+
+	body, err := getBodyStringFromRecorder(recorder)
+	if err != nil {
+		assert.Fail("Could not read the body.")
+	}
+
+	assert.Contains(body, `"Name":"testUser"`)
+	assert.Contains(body, `"id":"`+uid.Hex()+`"`)
 }
