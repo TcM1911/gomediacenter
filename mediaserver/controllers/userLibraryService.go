@@ -20,7 +20,7 @@ type movieResponse struct {
 }
 
 type introResponse struct {
-	Intros *[]gomediacenter.Intro `json:"Items,array,omitempty"`
+	Intros []*gomediacenter.Intro `json:"Items,array,omitempty"`
 	Count  int                    `json:"TotalRecordCount"`
 }
 
@@ -95,7 +95,7 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println("Error getting intros from the database", err)
 	} else {
-		size := len(*intros)
+		size := len(intros)
 		res.Count = size
 		res.Intros = intros
 	}

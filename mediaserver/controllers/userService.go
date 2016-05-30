@@ -4,17 +4,46 @@ import (
 	"log"
 	"net/http"
 
+	"strconv"
+
+	"net/url"
+
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-//[Route("/Users", "GET", Summary = "Gets a list of users")]
-//[Authenticated]
-//[ApiMember(Name = "IsHidden", Description = "Optional filter by IsHidden=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-//[ApiMember(Name = "IsDisabled", Description = "Optional filter by IsDisabled=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-//[ApiMember(Name = "IsGuest", Description = "Optional filter by IsGuest=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
+// GetAllUsers returns all the users. Route: "/Users". This action requires an
+// authenticated user. The list can be filtered by: IsHidden, IsDisabled, and IsGuest.
+func GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	log.Println("Serving request for all users.")
+	queryVars := GetContextVar(r, "queryVars").(url.Values)
+	filter := make(map[string]interface{})
+	keys := []string{"IsHidden", "IsDisabled", "IsGuest"}
+	for _, key := range keys {
+		if val := queryVars.Get(key); val != "" {
+			if parsedVal, err := strconv.ParseBool(val); err == nil {
+				filter[key] = parsedVal
+				log.Println("Search filtered by", key, "=", parsedVal)
+			}
+		}
+	}
+
+	db := GetContextVar(r, "db").(db.UserManager)
+	users, err := db.GetAllUsers(filter)
+	if err != nil {
+		http.Error(w, "error when getting all users", http.StatusInternalServerError)
+		log.Println("Error when querying for all users:", err)
+		return
+	}
+	log.Println("Number of users returned:", len(users))
+	if len(users) == 0 {
+		// Make sure an empty array is returned instead of nil.
+		users = []*gomediacenter.User{}
+	}
+	writeJsonBody(w, users)
+}
 
 //[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
 

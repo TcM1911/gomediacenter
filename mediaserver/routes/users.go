@@ -12,12 +12,13 @@ func newUsersRouter(router *mux.Router) {
 	*/
 	usersRouter := router.PathPrefix("/Users").Subrouter()
 
-	//[Route("/Users", "GET", Summary = "Gets a list of users")]
-	//[Authenticated]
-	//[ApiMember(Name = "IsHidden", Description = "Optional filter by IsHidden=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-	//[ApiMember(Name = "IsDisabled", Description = "Optional filter by IsDisabled=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-	//[ApiMember(Name = "IsGuest", Description = "Optional filter by IsGuest=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-	router.HandleFunc("/Users", notYetImplemented).Methods("GET")
+	// GET to the route "/Users" gets a list of users. This action required the user
+	// to be logged in. The list can be filtered by the query parameters: IsHidden,
+	// IsDisabled, and IsGuest.
+	router.HandleFunc("/Users", middleware.WithContext(
+		middleware.WithQueryVars(
+			middleware.WithDB(
+				controllers.GetAllUsers)))).Methods("GET")
 
 	//[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
 	usersRouter.HandleFunc("/Public", notYetImplemented).Methods("GET")

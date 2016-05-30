@@ -87,6 +87,7 @@ func TestGetUserById(t *testing.T) {
 	// Request
 	r, _ := http.NewRequest("GET", "/", nil)
 	OpenContext(r)
+	defer CloseContext(r)
 
 	// Setup db mock.
 	db := new(mockDB)
@@ -110,4 +111,34 @@ func TestGetUserById(t *testing.T) {
 
 	assert.Contains(body, `"Name":"testUser"`)
 	assert.Contains(body, `"id":"`+uid.Hex()+`"`)
+}
+
+func TestGetAllUsers(t *testing.T) {
+	assert := assert.New(t)
+
+	user1 := gomediacenter.NewUser("user1")
+	user2 := gomediacenter.NewUser("user2")
+	users := []*gomediacenter.User{user1, user2}
+
+	r, _ := http.NewRequest("GET", "/", nil)
+	OpenContext(r)
+	defer CloseContext(r)
+
+	db := new(mockDB)
+	db.On("GetAllUsers", mock.Anything).Return(users, nil)
+	SetContextVar(r, "db", db)
+
+	queryVars := url.Values{}
+	SetContextVar(r, "queryVars", queryVars)
+
+	recorder := httptest.NewRecorder()
+	GetAllUsers(recorder, r)
+
+	body, err := getBodyStringFromRecorder(recorder)
+	if err != nil {
+		assert.Fail("Error when parsing the body", err)
+	}
+
+	assert.Contains(body, `[{"Name":"user1"`)
+	assert.Contains(body, `},{"Name":"user2"`)
 }

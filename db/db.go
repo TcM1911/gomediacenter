@@ -112,10 +112,10 @@ func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, 
 }
 
 // FindItemIntro returns intros for an item.
-func (d *DB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
+func (d *DB) FindItemIntro(id string) ([]*gomediacenter.Intro, error) {
 	// TODO: Add support for intros
-	var intros []gomediacenter.Intro
-	return &intros, mgo.ErrNotFound
+	var intros []*gomediacenter.Intro
+	return intros, mgo.ErrNotFound
 }
 
 // Inserts an item into the media type collection.

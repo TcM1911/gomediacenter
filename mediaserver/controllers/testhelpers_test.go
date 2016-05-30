@@ -27,9 +27,9 @@ func (m *mockDB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserDa
 	return args.Get(0).(*gomediacenter.ItemUserData), args.Error(1)
 }
 
-func (m *mockDB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
+func (m *mockDB) FindItemIntro(id string) ([]*gomediacenter.Intro, error) {
 	args := m.Called(id)
-	return args.Get(0).(*[]gomediacenter.Intro), args.Error(1)
+	return args.Get(0).([]*gomediacenter.Intro), args.Error(1)
 }
 
 func (m *mockDB) AddNewUser(user *gomediacenter.User) error {
@@ -40,6 +40,11 @@ func (m *mockDB) AddNewUser(user *gomediacenter.User) error {
 func (m *mockDB) GetUserById(s string) (*gomediacenter.User, error) {
 	args := m.Called(s)
 	return args.Get(0).(*gomediacenter.User), args.Error(1)
+}
+
+func (m *mockDB) GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, error) {
+	args := m.Called(filter)
+	return args.Get(0).([]*gomediacenter.User), args.Error(1)
 }
 
 //////////////////////

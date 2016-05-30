@@ -47,8 +47,8 @@ type UserConfig struct {
 // by an admin.
 type UserPolicy struct {
 	Admin                bool          `json:"IsAdministrator"`
-	Hidden               bool          `json:"IsHidden"`
-	Disabled             bool          `json:"IsDisabled"`
+	Hidden               bool          `json:"IsHidden" bson:"IsHidden"`
+	Disabled             bool          `json:"IsDisabled" bson:"IsDisabled"`
 	BlockedTags          []interface{} `json:"BlockedTags,array"`
 	UserPreferenceAccess bool          `json:"EnableUserPreferenceAccess"`
 	//"AccessSchedules":[],

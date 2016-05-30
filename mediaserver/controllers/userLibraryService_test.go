@@ -114,7 +114,7 @@ func TestUserItemIntrosHandlerNoEntry(t *testing.T) {
 	assert := assert.New(t)
 
 	database := new(mockDB)
-	var array *[]gomediacenter.Intro
+	var array []*gomediacenter.Intro
 	database.On("FindItemIntro", "12345").Return(array, mgo.ErrNotFound)
 
 	// PathVars

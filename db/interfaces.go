@@ -19,7 +19,7 @@ type ItemFinder interface {
 
 // IntroFinder can find intros for an item.
 type IntroFinder interface {
-	FindItemIntro(id string) (*[]gomediacenter.Intro, error)
+	FindItemIntro(id string) ([]*gomediacenter.Intro, error)
 }
 
 // ItemUserData can find user data for an item.
@@ -32,4 +32,5 @@ type ItemUserData interface {
 type UserManager interface {
 	AddNewUser(user *gomediacenter.User) error
 	GetUserById(hexString string) (*gomediacenter.User, error)
+	GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, error)
 }
