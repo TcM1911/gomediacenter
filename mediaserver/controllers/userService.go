@@ -3,16 +3,23 @@ package controllers
 import (
 	"log"
 	"net/http"
-
-	"strconv"
-
 	"net/url"
+	"strconv"
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+/////////////
+// Structs //
+/////////////
+
+type publicUserResponse struct {
+	Name string        `json:"Name"`
+	Id   bson.ObjectId `json:"id"`
+}
 
 // GetAllUsers returns all the users. Route: "/Users". This action requires an
 // authenticated user. The list can be filtered by: IsHidden, IsDisabled, and IsGuest.
@@ -29,23 +36,34 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
-	db := GetContextVar(r, "db").(db.UserManager)
-	users, err := db.GetAllUsers(filter)
+	users, err := getFilteredUserList(filter, r)
 	if err != nil {
 		http.Error(w, "error when getting all users", http.StatusInternalServerError)
 		log.Println("Error when querying for all users:", err)
 		return
 	}
-	log.Println("Number of users returned:", len(users))
-	if len(users) == 0 {
-		// Make sure an empty array is returned instead of nil.
-		users = []*gomediacenter.User{}
-	}
 	writeJsonBody(w, users)
 }
 
-//[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
+// GetAllUsersPublic gets a list of publicly visible users for display on a login screen.
+func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
+	log.Println("Serving request for public viewing of all users.")
+	filter := make(map[string]interface{})
+	filter["IsHidden"] = false
+	users, err := getFilteredUserList(filter, r)
+	if err != nil {
+		http.Error(w, "error when getting all users", http.StatusInternalServerError)
+		log.Println("Error when querying for all users:", err)
+		return
+	}
+
+	var publicList []*publicUserResponse
+	for _, user := range users {
+		publicList = append(publicList,
+			&publicUserResponse{Name: user.Name, Id: user.Id})
+	}
+	writeJsonBody(w, publicList)
+}
 
 // GetUserById gets a user by Id. Route: /Users/{uid}.
 // Can only be accessed by the authenticated user or admin.
@@ -134,3 +152,17 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 
 //[Route("/Users/ForgotPassword/Pin", "POST", Summary = "Redeems a forgot password pin")]
 //[ApiMember(Name = "Pin", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]
+
+func getFilteredUserList(filter map[string]interface{}, r *http.Request) ([]*gomediacenter.User, error) {
+	db := GetContextVar(r, "db").(db.UserManager)
+	users, err := db.GetAllUsers(filter)
+	if err != nil {
+		return users, err
+	}
+	log.Println("Number of users returned:", len(users))
+	if len(users) == 0 {
+		// Make sure an empty array is returned instead of nil.
+		users = []*gomediacenter.User{}
+	}
+	return users, nil
+}

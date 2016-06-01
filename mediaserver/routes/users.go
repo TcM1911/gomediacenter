@@ -20,8 +20,11 @@ func newUsersRouter(router *mux.Router) {
 			middleware.WithDB(
 				controllers.GetAllUsers)))).Methods("GET")
 
-	//[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
-	usersRouter.HandleFunc("/Public", notYetImplemented).Methods("GET")
+	// GET to the route"/Users/Public" gets a list of publicly visible users
+	// for display on a login screen.
+	usersRouter.HandleFunc("/Public", middleware.WithContext(
+		middleware.WithDB(
+			controllers.GetAllUsersPublic))).Methods("GET")
 
 	// POST to the route /Users/New creates a new user. This action requires
 	// admin status. The username is sent in the body with the parameter name of 'Name'.
