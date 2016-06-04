@@ -103,12 +103,25 @@ func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, 
 	err := q.One(&itemUserData)
 	if err == mgo.ErrNotFound {
 		// Return a new struct.
-		return gomediacenter.NewItemUserData(itemId, uid), nil
+		data := gomediacenter.NewItemUserData(itemId, uid)
+		if err := d.InsertItemUserData(data); err != nil {
+			return data, err
+		}
+		return data, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 	return itemUserData, nil
+}
+
+// InsertItemUserData inserts a new record of user item data.
+func (d *DB) InsertItemUserData(userData *gomediacenter.ItemUserData) error {
+	err := d.session.DB(DATABASE_NAME).C(ITEM_USER_DATA_COLLECTION).Insert(userData)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // FindItemIntro returns intros for an item.
@@ -131,7 +144,7 @@ func InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error
 	return nil
 }
 
-// Removes an item into the media type collection.
+// Removes an item in the media type collection.
 func RemoveItemType(id bson.ObjectId) error {
 	session := GetDBSession()
 	defer session.Close()

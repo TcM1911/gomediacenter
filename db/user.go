@@ -3,6 +3,7 @@ package db
 import (
 	"github.com/tcm1911/gomediacenter"
 	"gopkg.in/mgo.v2/bson"
+	"log"
 )
 
 // AddNewUser adds a new user to the Users collection.
@@ -43,4 +44,16 @@ func (d *DB) GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, 
 		return nil, err
 	}
 	return users, nil
+}
+
+func (d *DB) DeleteUser(hexString string) error {
+	// Remove all user item data.
+	info, err := d.session.DB(DATABASE_NAME).C(ITEM_USER_DATA_COLLECTION).RemoveAll(
+		bson.M{"uid": hexString})
+	if err != nil {
+		log.Println("Error when deleting user data:", err)
+	}
+	log.Println("Number of user data entries removed:", info.Removed)
+	log.Println("Removing user", hexString)
+	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).RemoveId(bson.ObjectIdHex(hexString))
 }

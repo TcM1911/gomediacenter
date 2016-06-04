@@ -39,15 +39,18 @@ func newUsersRouter(router *mux.Router) {
 			middleware.WithDB(
 				controllers.GetUserById)))).Methods("GET")
 
-	//[Route("/Users/{Id}/Offline", "GET", Summary = "Gets an offline user record by Id")]
-	//[Authenticated]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-	usersRouter.HandleFunc("/{id}/Offline", notYetImplemented).Methods("GET")
+	// GET to the route "/Users/{Id}/Offline" gets an offline user record by Id.
+	usersRouter.HandleFunc("/{uid}/Offline", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.WithDB(
+				controllers.GetOfflineUserById)))).Methods("GET")
 
-	//[Route("/Users/{Id}", "DELETE", Summary = "Deletes a user")]
-	//[Authenticated(Roles = "Admin")]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "DELETE")]
-	usersRouter.HandleFunc("/{id}", notYetImplemented).Methods("DELETE")
+	//A DELETE to /Users/{uid} deletes a user and all it's item data.
+	// This action requires admin rights.
+	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.WithDB(
+				controllers.DeleteUser)))).Methods("DELETE")
 
 	//[Route("/Users/{Id}/Authenticate", "POST", Summary = "Authenticates a user")]
 	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]

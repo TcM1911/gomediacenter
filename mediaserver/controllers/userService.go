@@ -8,7 +8,6 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -69,34 +68,45 @@ func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
 // Can only be accessed by the authenticated user or admin.
 func GetUserById(w http.ResponseWriter, r *http.Request) {
 	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid := pathVars["uid"]
-
-	if !bson.IsObjectIdHex(uid) {
-		http.Error(w, "not a valid id", http.StatusBadRequest)
+	uid, ok := getIdFromPathVarAndCheckForErr("uid", pathVars, w)
+	if !ok {
 		return
 	}
 
 	db := GetContextVar(r, "db").(db.UserManager)
 
 	user, err := db.GetUserById(uid)
-	if err == mgo.ErrNotFound {
-		http.Error(w, "no user with that id", http.StatusBadRequest)
-		return
-	} else if err != nil {
-		http.Error(w, "error serving the request", http.StatusInternalServerError)
-		log.Println("Error while retrieving the user", uid, ":", err)
+	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err,
+		"Error while retrieving the user", w); !ok {
 		return
 	}
 	writeJsonBody(w, user)
 }
 
-//[Route("/Users/{Id}/Offline", "GET", Summary = "Gets an offline user record by Id")]
-//[Authenticated]
-//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
+// GetOfflineUserById gets an offline user record by Id.
+func GetOfflineUserById(w http.ResponseWriter, r *http.Request) {
+	GetUserById(w, r)
+}
 
-//[Route("/Users/{Id}", "DELETE", Summary = "Deletes a user")]
-//[Authenticated(Roles = "Admin")]
-//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "DELETE")]
+// A DELETE to /Users/{uid} deletes a user and all it's item data.
+// This action requires admin rights.
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("Serving removing user request")
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	uid, ok := getIdFromPathVarAndCheckForErr("uid", pathVars, w)
+	if !ok {
+		return
+	}
+
+	db := GetContextVar(r, "db").(db.UserManager)
+	err := db.DeleteUser(uid)
+	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err,
+		"Error when deleting", w); !ok {
+		return
+	}
+	log.Println("User", uid, "removed.")
+	w.WriteHeader(http.StatusOK)
+}
 
 //[Route("/Users/{Id}/Authenticate", "POST", Summary = "Authenticates a user")]
 //[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
@@ -152,17 +162,3 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 
 //[Route("/Users/ForgotPassword/Pin", "POST", Summary = "Redeems a forgot password pin")]
 //[ApiMember(Name = "Pin", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]
-
-func getFilteredUserList(filter map[string]interface{}, r *http.Request) ([]*gomediacenter.User, error) {
-	db := GetContextVar(r, "db").(db.UserManager)
-	users, err := db.GetAllUsers(filter)
-	if err != nil {
-		return users, err
-	}
-	log.Println("Number of users returned:", len(users))
-	if len(users) == 0 {
-		// Make sure an empty array is returned instead of nil.
-		users = []*gomediacenter.User{}
-	}
-	return users, nil
-}

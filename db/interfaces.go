@@ -24,8 +24,7 @@ type IntroFinder interface {
 
 // ItemUserData can find user data for an item.
 type ItemUserData interface {
-	InsertItemUserData(uid, itemId string) error
-	DeleteItemUserData(uid, itemId string) error
+	InsertItemUserData(userData *gomediacenter.ItemUserData) error
 }
 
 // UserManager can create, update, and remove user profiles.
@@ -33,4 +32,5 @@ type UserManager interface {
 	AddNewUser(user *gomediacenter.User) error
 	GetUserById(hexString string) (*gomediacenter.User, error)
 	GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, error)
+	DeleteUser(hexString string) error
 }
