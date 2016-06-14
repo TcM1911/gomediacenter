@@ -14,9 +14,10 @@ import (
 type User struct {
 	Name                string        `json:"Name"`
 	Id                  bson.ObjectId `json:"id" bson:"_id"`
-	HasPasswd           bool          `json:"HasPassword"`
+	HasPasswd           bool          `json:"HasPassword" bson:"haspassword"`
 	HasConfiguredPasswd bool          `json:"HasConfiguredPassword"`
 	HasConfigEasyPasswd bool          `json:"HasConfiguredEasyPassword"`
+	Password            []byte        `json:"-" bson:"password"`
 	Configuration       *UserConfig   `json:"Configuration"`
 	Policy              *UserPolicy   `json:"Policy"`
 }

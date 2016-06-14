@@ -52,20 +52,32 @@ func newUsersRouter(router *mux.Router) {
 			middleware.WithDB(
 				controllers.DeleteUser)))).Methods("DELETE")
 
-	//[Route("/Users/{Id}/Authenticate", "POST", Summary = "Authenticates a user")]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	//[ApiMember(Name = "Password", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/Authenticate", notYetImplemented).Methods("POST")
+	// A POST to /Users/{uid}/Authenticate authenticates a user.
+	// The password is past in the body in the parameter password.
+	usersRouter.HandleFunc("/{uid}/Authenticate",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.VerifyIds([]string{"uid"},
+					middleware.WithQueryVars(
+						middleware.WithDB(
+							controllers.Authenticate)))))).Methods("POST")
 
-	//[Route("/Users/AuthenticateByName", "POST", Summary = "Authenticates a user")]
-	//[ApiMember(Name = "Username", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	//[ApiMember(Name = "Password", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	//[ApiMember(Name = "PasswordMd5", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	usersRouter.HandleFunc("/AuthenticateByName", notYetImplemented).Methods("POST")
+	// A POST to /Users/AuthenticateByName authenticates a user.
+	// Username and password is past in the body as the parameters Username and password.
+	usersRouter.HandleFunc("/AuthenticateByName", middleware.WithContext(
+		middleware.WithQueryVars(
+			middleware.WithDB(
+				controllers.AuthenticateByName)))).Methods("POST")
 
-	//[Route("/Users/{Id}/Password", "POST", Summary = "Updates a user's password")]
-	//[Authenticated]
-	usersRouter.HandleFunc("/{id}/Password", notYetImplemented).Methods("POST")
+	// A POST to /Users/{Id}/Password updates a user's password.
+	// New password and current password are past as body parameters
+	// newPassword and currentPassword.
+	usersRouter.HandleFunc("/{uid}/Password", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.VerifyIds([]string{"uid"},
+				middleware.WithQueryVars(
+					middleware.WithDB(
+						controllers.ChangeUserPassword)))))).Methods("POST")
 
 	//[Route("/Users/{Id}/EasyPassword", "POST", Summary = "Updates a user's easy password")]
 	//[Authenticated]

@@ -12,6 +12,7 @@ import (
 ///////////////
 // Constants //
 ///////////////
+
 const (
 	DATABASE_NAME             = "gomedia"
 	MEDIATYPE_COLLECTION      = "mediatypes"
@@ -19,6 +20,7 @@ const (
 	USER_COLLECTION           = "users"
 	ITEM_USER_DATA_COLLECTION = "itemuserdata"
 	LIBRARY_COLLECTION        = "library"
+	SESSIONS                  = "sessions"
 )
 
 /////////////

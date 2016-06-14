@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -141,4 +142,229 @@ func TestGetAllUsers(t *testing.T) {
 
 	assert.Contains(body, `[{"Name":"user1"`)
 	assert.Contains(body, `},{"Name":"user2"`)
+}
+
+func TestParseAuthHeader(t *testing.T) {
+	expected := client{
+		Version:  "3.0.5912.0",
+		Device:   "Chrome 50.0.2661.50",
+		Client:   "Emby Web Client",
+		DeviceId: "cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c",
+	}
+	r, err := http.NewRequest("POST", "", nil)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	r.Header.Add("x-emby-authorization", `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`)
+
+	actual, err := parseAuthHeader(r)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestSettingAnUserPassword(t *testing.T) {
+	assert := assert.New(t)
+
+	user := &gomediacenter.User{Id: bson.NewObjectId(), Name: "User", HasPasswd: false}
+	r, err := passwordChangeContext(user, "", "password")
+	defer CloseContext(r)
+	if err != nil {
+		assert.Fail(err.Error())
+	}
+
+	recorder := httptest.NewRecorder()
+
+	ChangeUserPassword(recorder, r)
+
+	assert.Equal(http.StatusOK, recorder.Code)
+}
+
+func TestChangeUserPassword(t *testing.T) {
+	assert := assert.New(t)
+
+	currentPass := "currentPass"
+	currentHash, err := bcrypt.GenerateFromPassword([]byte(currentPass), bcrypt.DefaultCost)
+	if err != nil {
+		assert.Fail(err.Error())
+	}
+
+	user := &gomediacenter.User{
+		Id:        bson.NewObjectId(),
+		Name:      "User",
+		HasPasswd: true,
+		Password:  currentHash,
+	}
+	r, err := passwordChangeContext(user, currentPass, "newPassword")
+	defer CloseContext(r)
+	if err != nil {
+		assert.Fail(err.Error())
+	}
+
+	recorder := httptest.NewRecorder()
+
+	ChangeUserPassword(recorder, r)
+
+	assert.Equal(http.StatusOK, recorder.Code)
+}
+
+// Password should not be changed if the password in the POST doesn't match what's in the db.
+func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
+	assert := assert.New(t)
+
+	currentHash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	if err != nil {
+		assert.Fail(err.Error())
+	}
+
+	user := &gomediacenter.User{
+		Id:        bson.NewObjectId(),
+		Name:      "User",
+		HasPasswd: true,
+		Password:  currentHash,
+	}
+	r, err := passwordChangeContext(user, "wrongPassword", "newPassword")
+	defer CloseContext(r)
+	if err != nil {
+		assert.Fail(err.Error())
+	}
+
+	recorder := httptest.NewRecorder()
+
+	ChangeUserPassword(recorder, r)
+
+	assert.Equal(http.StatusBadRequest, recorder.Code)
+}
+
+func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) (*http.Request, error) {
+	// Mock setup.
+	db := new(mockDB)
+	db.On("ChangeUserPassword", user.Id.Hex(), mock.Anything).Return(nil)
+	db.On("GetUserById", user.Id.Hex()).Return(user, nil)
+
+	// Context setup.
+	r, err := http.NewRequest("POST", "", nil)
+	if err != nil {
+		return nil, err
+	}
+	OpenContext(r)
+
+	SetContextVar(r, "db", db)
+	pathVars := make(map[string]string)
+	pathVars["uid"] = user.Id.Hex()
+	SetContextVar(r, "pathVars", pathVars)
+	queryVars := url.Values{}
+	queryVars.Add("currentPassword", currentPass)
+	queryVars.Add("newPassword", newPass)
+	SetContextVar(r, "queryVars", queryVars)
+
+	return r, nil
+}
+
+func TestAuthenticateWithCorrectPassword(t *testing.T) {
+	r, err := authenticateContextSetup("testpassword", "testpassword", "", true)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	w := httptest.NewRecorder()
+	Authenticate(w, r)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthenticateWithIncorrectPassword(t *testing.T) {
+	r, err := authenticateContextSetup("testpassword", "incorrect", "", true)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	w := httptest.NewRecorder()
+	Authenticate(w, r)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAuthenticateWithoutCorrectHeader(t *testing.T) {
+	r, err := authenticateContextSetup("testpassword", "testpassword", "", false)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	w := httptest.NewRecorder()
+	Authenticate(w, r)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAuthenticateByNameWithCorrectPassword(t *testing.T) {
+	r, err := authenticateContextSetup("testpassword", "testpassword", "Username", true)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	w := httptest.NewRecorder()
+	AuthenticateByName(w, r)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthenticateByNameWithIncorrectPassword(t *testing.T) {
+	r, err := authenticateContextSetup("testpassword", "incorrect", "Username", true)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	w := httptest.NewRecorder()
+	AuthenticateByName(w, r)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAuthenticateByNameWithoutCorrectHeader(t *testing.T) {
+	r, err := authenticateContextSetup("testpassword", "testpassword", "Username", false)
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
+	w := httptest.NewRecorder()
+	AuthenticateByName(w, r)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHeader bool) (*http.Request, error) {
+
+	user := &gomediacenter.User{Id: bson.NewObjectId()}
+
+	// Context setup.
+	r, err := http.NewRequest("POST", "", nil)
+	if err != nil {
+		return nil, err
+	}
+	OpenContext(r)
+
+	if bodyUserName == "" {
+		pathVars := make(map[string]string)
+		pathVars["uid"] = user.Id.Hex()
+		SetContextVar(r, "pathVars", pathVars)
+	}
+
+	passHash, err := bcrypt.GenerateFromPassword([]byte(userPass), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Name = "Username"
+	user.Password = passHash
+	user.HasPasswd = true
+
+	// Mock setup.
+	db := new(mockDB)
+	db.On("GetUserById", user.Id.Hex()).Return(user, nil)
+	db.On("GetUserByName", bodyUserName).Return(user, nil)
+	SetContextVar(r, "db", db)
+
+	queryVars := url.Values{}
+	queryVars.Add("password", loginPass)
+	if bodyUserName != "" {
+		queryVars.Add("Username", bodyUserName)
+	}
+	SetContextVar(r, "queryVars", queryVars)
+
+	if withHeader {
+		r.Header.Add("x-emby-authorization", `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`)
+	}
+
+	return r, nil
 }

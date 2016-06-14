@@ -1,9 +1,10 @@
 package db
 
 import (
+	"log"
+
 	"github.com/tcm1911/gomediacenter"
 	"gopkg.in/mgo.v2/bson"
-	"log"
 )
 
 // AddNewUser adds a new user to the Users collection.
@@ -14,6 +15,16 @@ func (d *DB) AddNewUser(user *gomediacenter.User) error {
 // GetUserById finds a user by it's id in the Users collection.
 func (d *DB) GetUserById(hexString string) (*gomediacenter.User, error) {
 	q := d.session.DB(DATABASE_NAME).C(USER_COLLECTION).FindId(bson.ObjectIdHex(hexString))
+	var user gomediacenter.User
+	if err := q.One(&user); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// GetUserByName finds a user by the username in the Users collection.
+func (d *DB) GetUserByName(name string) (*gomediacenter.User, error) {
+	q := d.session.DB(DATABASE_NAME).C(USER_COLLECTION).Find(bson.M{"name": name})
 	var user gomediacenter.User
 	if err := q.One(&user); err != nil {
 		return nil, err
@@ -46,6 +57,7 @@ func (d *DB) GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, 
 	return users, nil
 }
 
+// DeleteUser removes a user and user data from the database.
 func (d *DB) DeleteUser(hexString string) error {
 	// Remove all user item data.
 	info, err := d.session.DB(DATABASE_NAME).C(ITEM_USER_DATA_COLLECTION).RemoveAll(
@@ -56,4 +68,12 @@ func (d *DB) DeleteUser(hexString string) error {
 	log.Println("Number of user data entries removed:", info.Removed)
 	log.Println("Removing user", hexString)
 	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).RemoveId(bson.ObjectIdHex(hexString))
+}
+
+// ChangeUserPassword changes the user's password.
+func (d *DB) ChangeUserPassword(uid string, newPassword []byte) error {
+	change := bson.M{"$set": bson.M{"password": newPassword, "haspassword": true}}
+	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).UpdateId(
+		bson.ObjectIdHex(uid),
+		change)
 }

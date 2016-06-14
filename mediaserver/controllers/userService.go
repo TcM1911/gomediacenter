@@ -1,13 +1,17 @@
 package controllers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
+	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -19,6 +23,20 @@ type publicUserResponse struct {
 	Name string        `json:"Name"`
 	Id   bson.ObjectId `json:"id"`
 }
+
+type authUserResponse struct {
+	Token   string                 `json:"AccessToken"`
+	Session *gomediacenter.Session `json:"SessionInfo"`
+	User    *gomediacenter.User    `json:"User"`
+}
+
+type client struct {
+	Client, Device, DeviceId, Version string
+}
+
+////////////
+// Public //
+////////////
 
 // GetAllUsers returns all the users. Route: "/Users". This action requires an
 // authenticated user. The list can be filtered by: IsHidden, IsDisabled, and IsGuest.
@@ -108,17 +126,91 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-//[Route("/Users/{Id}/Authenticate", "POST", Summary = "Authenticates a user")]
-//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-//[ApiMember(Name = "Password", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
+// A POST to /Users/{uid}/Authenticate authenticates a user.
+// The password is past in the body in the parameter password.
+func Authenticate(w http.ResponseWriter, r *http.Request) {
+	log.Println("Processing authentication request")
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	uid := pathVars["uid"]
 
-//[Route("/Users/AuthenticateByName", "POST", Summary = "Authenticates a user")]
-//[ApiMember(Name = "Username", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-//[ApiMember(Name = "Password", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-//[ApiMember(Name = "PasswordMd5", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
+	db := GetContextVar(r, "db").(db.UserManager)
+	user, err := db.GetUserById(uid)
+	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err, "Error when getting user data", w); !ok {
+		return
+	}
+	queryVars := GetContextVar(r, "queryVars").(url.Values)
+	passwd := queryVars.Get("password")
+	authenticateUser(user, passwd, w, r)
+}
 
-//[Route("/Users/{Id}/Password", "POST", Summary = "Updates a user's password")]
-//[Authenticated]
+// A POST to /Users/AuthenticateByName authenticates a user.
+// Username and password is past in the body as the parameters Username and password.
+func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
+	log.Println("Processing authentication request by name")
+
+	queryVars := GetContextVar(r, "queryVars").(url.Values)
+	passwd := queryVars.Get("password")
+	username := queryVars.Get("Username")
+	if username == "" {
+		http.Error(w, "username can't be empty", http.StatusBadRequest)
+		return
+	}
+
+	db := GetContextVar(r, "db").(db.UserManager)
+	user, err := db.GetUserByName(username)
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		log.Println("Error when trying to retrieve user profile for", username, err)
+		return
+	}
+	authenticateUser(user, passwd, w, r)
+}
+
+// A POST to /Users/{Id}/Password updates a user's password.
+// New password and current password are past as body parameters
+// newPassword and currentPassword.
+func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	uid := pathVars["uid"]
+	log.Println("Changing the password for", uid)
+
+	qVars := GetContextVar(r, "queryVars").(url.Values)
+	currentPass := qVars.Get("currentPassword")
+	newPass := qVars.Get("newPassword")
+	if newPass == "" {
+		http.Error(w, "new password is required", http.StatusBadRequest)
+		return
+	}
+
+	db := GetContextVar(r, "db").(db.UserManager)
+	user, err := db.GetUserById(uid)
+	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err, "Error when getting user data", w); !ok {
+		return
+	}
+
+	if user.HasPasswd && (bcrypt.CompareHashAndPassword(
+		user.Password,
+		[]byte(currentPass)) != nil) {
+		http.Error(w, "incorrect current password", http.StatusBadRequest)
+		log.Printf("Verification of the current password for %s failed.\n", uid)
+		return
+	}
+
+	passHash, err := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "failed to generate a new hash", http.StatusInternalServerError)
+		log.Println("Error when generating password hash:", err)
+		return
+	}
+
+	if err := db.ChangeUserPassword(uid, passHash); err != nil {
+		http.Error(w, "Error when updating the password", http.StatusInternalServerError)
+		log.Printf("Error when updating password for %s, %s\n", uid, err)
+		return
+	}
+	log.Printf("Password for %s has been updated.\n", uid)
+	w.WriteHeader(http.StatusOK)
+}
 
 //[Route("/Users/{Id}/EasyPassword", "POST", Summary = "Updates a user's easy password")]
 //[Authenticated]
@@ -162,3 +254,67 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 
 //[Route("/Users/ForgotPassword/Pin", "POST", Summary = "Redeems a forgot password pin")]
 //[ApiMember(Name = "Pin", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]
+
+/////////////
+// Private //
+/////////////
+
+func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWriter, r *http.Request) {
+	if user.HasPasswd && (bcrypt.CompareHashAndPassword(user.Password, []byte(passwd)) != nil) {
+		http.Error(w, "", http.StatusUnauthorized)
+		log.Println("Invalid login by", user.Name)
+		return
+	}
+	client, err := parseAuthHeader(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	authToken := bson.NewObjectId()
+	session := &gomediacenter.Session{
+		Id:            authToken,
+		UserId:        user.Id.Hex(),
+		UserName:      user.Name,
+		DeviceId:      client.DeviceId,
+		DeviceName:    client.Device,
+		Client:        client.Client,
+		ClientVersion: client.Version,
+	}
+	go auth.AddSession(session)
+	log.Println(user.Name, "authenticated.")
+	resp := &authUserResponse{Token: authToken.Hex(), Session: session, User: user}
+	writeJsonBody(w, resp)
+}
+
+func parseAuthHeader(r *http.Request) (client, error) {
+	var client client
+	header := r.Header.Get("x-emby-authorization")
+	if header == "" {
+		return client, errors.New("missing x-emby-authorization header")
+	}
+
+	a := strings.Split(header, ",")
+	for _, v := range a {
+		keyVal := strings.Split(v, "=")
+		k := strings.TrimSpace(keyVal[0])
+		val := strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(keyVal[1]), `"`), `"`)
+
+		switch k {
+		case "Device":
+			client.Device = val
+		case "DeviceId":
+			client.DeviceId = val
+		case "Version":
+			client.Version = val
+		case "MediaBrowser Client":
+			client.Client = val
+		}
+	}
+
+	if client.Client == "" && client.Version == "" && client.DeviceId == "" && client.Device == "" {
+		return client, errors.New("missing information in the header")
+	}
+
+	return client, nil
+}

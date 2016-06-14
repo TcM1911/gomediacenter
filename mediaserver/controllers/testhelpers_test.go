@@ -47,6 +47,26 @@ func (m *mockDB) GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.Us
 	return args.Get(0).([]*gomediacenter.User), args.Error(1)
 }
 
+func (m *mockDB) DeleteUser(hexString string) error {
+	args := m.Called(hexString)
+	return args.Error(0)
+}
+
+func (m *mockDB) GetUserByName(name string) (*gomediacenter.User, error) {
+	args := m.Called(name)
+	return args.Get(0).(*gomediacenter.User), args.Error(1)
+}
+
+func (m *mockDB) GetUserPasswordHash(uid string) ([]byte, error) {
+	args := m.Called(uid)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *mockDB) ChangeUserPassword(uid string, newPassword []byte) error {
+	args := m.Called(uid, newPassword)
+	return args.Error(0)
+}
+
 //////////////////////
 // Helper functions //
 //////////////////////
