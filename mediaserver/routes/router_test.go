@@ -1,3 +1,5 @@
+// +build integration
+
 package routes_test
 
 import (
