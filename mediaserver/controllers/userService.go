@@ -166,6 +166,17 @@ func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 	authenticateUser(user, passwd, w, r)
 }
 
+// LogoutUser logs out the user and removes the sessions from the session manager.
+func LogoutUser(w http.ResponseWriter, r *http.Request) {
+	pathVars := GetContextVar(r, "pathVars").(map[string]string)
+	uid := pathVars["uid"]
+	key := r.Header.Get(gomediacenter.SESSION_KEY_HEADER)
+	if ok := auth.RemoveSession(uid, key); ok {
+		w.WriteHeader(http.StatusOK)
+	}
+	w.WriteHeader(http.StatusBadRequest)
+}
+
 // A POST to /Users/{Id}/Password updates a user's password.
 // New password and current password are past as body parameters
 // newPassword and currentPassword.

@@ -11,10 +11,22 @@ import (
 var sessionReq chan string
 var sessionRes chan *gomediacenter.Session
 var newSession chan *gomediacenter.Session
+var delSession chan *gomediacenter.Session
 
 // AddSession adds a new sessions to the session manager to track.
 func AddSession(session *gomediacenter.Session) {
 	newSession <- session
+}
+
+// RemoveSession removes an active session so user is logged out.
+func RemoveSession(uid, sessionKey string) bool {
+	sessionReq <- sessionKey
+	session := <-sessionRes
+	if session.UserId != uid {
+		return false
+	}
+	delSession <- session
+	return true
 }
 
 // Run starts the session manager.
@@ -24,6 +36,7 @@ func Run() chan struct{} {
 	sessionReq = make(chan string)
 	sessionRes = make(chan *gomediacenter.Session)
 	newSession = make(chan *gomediacenter.Session)
+	delSession = make(chan *gomediacenter.Session)
 	exitChan := make(chan struct{})
 
 	go func(abort chan struct{}) {
@@ -35,6 +48,12 @@ func Run() chan struct{} {
 			case session := <-newSession:
 				sessions[session.Id.Hex()] = session
 				saveSessionMap(sessions)
+			case session := <-delSession:
+				delete(sessions, session.Id.Hex())
+				go func(id string) {
+					db := db.GetDB()
+					db.RemoveSession(id)
+				}(session.Id.Hex())
 			case <-abort:
 				saveSessionMap(sessions)
 				break loop
@@ -43,6 +62,7 @@ func Run() chan struct{} {
 		close(sessionReq)
 		close(sessionRes)
 		close(newSession)
+		close(delSession)
 		sessions = nil
 		abort <- struct{}{}
 	}(exitChan)
