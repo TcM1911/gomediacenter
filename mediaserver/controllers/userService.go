@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -18,17 +19,6 @@ import (
 /////////////
 // Structs //
 /////////////
-
-type publicUserResponse struct {
-	Name string        `json:"Name"`
-	Id   bson.ObjectId `json:"id"`
-}
-
-type authUserResponse struct {
-	Token   string                 `json:"AccessToken"`
-	Session *gomediacenter.Session `json:"SessionInfo"`
-	User    *gomediacenter.User    `json:"User"`
-}
 
 type client struct {
 	Client, Device, DeviceId, Version string
@@ -74,10 +64,10 @@ func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var publicList []*publicUserResponse
+	var publicList []*gomediacenter.PublicUserResponse
 	for _, user := range users {
 		publicList = append(publicList,
-			&publicUserResponse{Name: user.Name, Id: user.Id})
+			&gomediacenter.PublicUserResponse{Name: user.Name, Id: user.Id})
 	}
 	writeJsonBody(w, publicList)
 }
@@ -138,8 +128,10 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err, "Error when getting user data", w); !ok {
 		return
 	}
-	queryVars := GetContextVar(r, "queryVars").(url.Values)
-	passwd := queryVars.Get("password")
+	var form gomediacenter.LoginRequest
+	json.NewDecoder(r.Body).Decode(&form)
+	r.Body.Close()
+	passwd := form.Password
 	authenticateUser(user, passwd, w, r)
 }
 
@@ -148,10 +140,13 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 	log.Println("Processing authentication request by name")
 
-	queryVars := GetContextVar(r, "queryVars").(url.Values)
-	passwd := queryVars.Get("password")
-	username := queryVars.Get("Username")
+	var form gomediacenter.LoginRequest
+	json.NewDecoder(r.Body).Decode(&form)
+	r.Body.Close()
+	username, passwd := form.Name, form.Password
+
 	if username == "" {
+		log.Println("Username was missing in the request.")
 		http.Error(w, "username can't be empty", http.StatusBadRequest)
 		return
 	}
@@ -173,6 +168,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get(gomediacenter.SESSION_KEY_HEADER)
 	if ok := auth.RemoveSession(uid, key); ok {
 		w.WriteHeader(http.StatusOK)
+		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
 }
@@ -185,9 +181,13 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	uid := pathVars["uid"]
 	log.Println("Changing the password for", uid)
 
-	qVars := GetContextVar(r, "queryVars").(url.Values)
-	currentPass := qVars.Get("currentPassword")
-	newPass := qVars.Get("newPassword")
+	var req gomediacenter.PasswordRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "failed to decode the request", http.StatusBadRequest)
+		return
+	}
+	newPass, currentPass := req.New, req.Current
 	if newPass == "" {
 		http.Error(w, "new password is required", http.StatusBadRequest)
 		return
@@ -240,7 +240,15 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 // NewUser creates a user. The name of the user to be created is passed as the
 // parameter Name in the POST body.
 func NewUser(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue("Name")
+	var userReq gomediacenter.NewUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&userReq); err != nil {
+		http.Error(w, "Failed to decode the request", http.StatusBadRequest)
+		log.Println("Error when decoding the request", err)
+		return
+	}
+	defer r.Body.Close()
+	name := userReq.Name
+
 	if name == "" {
 		http.Error(w, "No username given", http.StatusBadRequest)
 		return
@@ -278,6 +286,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 	}
 	client, err := parseAuthHeader(r)
 	if err != nil {
+		log.Println("Bad auth header.")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -287,6 +296,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 		Id:            authToken,
 		UserId:        user.Id.Hex(),
 		UserName:      user.Name,
+		Admin:         user.Policy.Admin,
 		DeviceId:      client.DeviceId,
 		DeviceName:    client.Device,
 		Client:        client.Client,
@@ -294,7 +304,10 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 	}
 	go auth.AddSession(session)
 	log.Println(user.Name, "authenticated.")
-	resp := &authUserResponse{Token: authToken.Hex(), Session: session, User: user}
+	resp := &gomediacenter.AuthUserResponse{}
+	resp.Token = authToken.Hex()
+	resp.Session = session
+	resp.User = user
 	writeJsonBody(w, resp)
 }
 

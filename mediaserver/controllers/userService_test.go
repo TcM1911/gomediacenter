@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,11 +21,10 @@ func TestNewUser(t *testing.T) {
 	db := new(mockDB)
 	db.On("AddNewUser", mock.Anything).Return(nil)
 
-	postBody := url.Values{}
-	postBody.Add("Name", "testUser")
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(gomediacenter.NewUserRequest{Name: "testUser"})
 
-	req, _ := http.NewRequest("POST", "/Users/New", nil)
-	req.PostForm = postBody
+	req, _ := http.NewRequest("POST", "/Users/New", b)
 
 	// Add to context
 	OpenContext(req)
@@ -244,8 +245,12 @@ func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string
 	db.On("ChangeUserPassword", user.Id.Hex(), mock.Anything).Return(nil)
 	db.On("GetUserById", user.Id.Hex()).Return(user, nil)
 
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(gomediacenter.PasswordRequest{
+		New: newPass, Current: currentPass})
+
 	// Context setup.
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", b)
 	if err != nil {
 		return nil, err
 	}
@@ -255,10 +260,6 @@ func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string
 	pathVars := make(map[string]string)
 	pathVars["uid"] = user.Id.Hex()
 	SetContextVar(r, "pathVars", pathVars)
-	queryVars := url.Values{}
-	queryVars.Add("currentPassword", currentPass)
-	queryVars.Add("newPassword", newPass)
-	SetContextVar(r, "queryVars", queryVars)
 
 	return r, nil
 }
@@ -327,8 +328,12 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 
 	user := &gomediacenter.User{Id: bson.NewObjectId()}
 
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(gomediacenter.LoginRequest{
+		Name: bodyUserName, Password: loginPass})
+
 	// Context setup.
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", b)
 	if err != nil {
 		return nil, err
 	}
@@ -348,6 +353,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 	user.Name = "Username"
 	user.Password = passHash
 	user.HasPasswd = true
+	user.Policy = &gomediacenter.UserPolicy{Admin: false}
 
 	// Mock setup.
 	db := new(mockDB)
@@ -355,15 +361,8 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 	db.On("GetUserByName", bodyUserName).Return(user, nil)
 	SetContextVar(r, "db", db)
 
-	queryVars := url.Values{}
-	queryVars.Add("password", loginPass)
-	if bodyUserName != "" {
-		queryVars.Add("Username", bodyUserName)
-	}
-	SetContextVar(r, "queryVars", queryVars)
-
 	if withHeader {
-		r.Header.Add("x-emby-authorization", `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`)
+		r.Header.Add(gomediacenter.SESSIION_AUTH_HEADER, AUTH_TEST_HEADER)
 	}
 
 	return r, nil

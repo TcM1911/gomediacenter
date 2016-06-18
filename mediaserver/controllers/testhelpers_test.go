@@ -8,6 +8,11 @@ import (
 	"github.com/tcm1911/gomediacenter"
 )
 
+///////////////
+// Constants //
+///////////////
+const AUTH_TEST_HEADER = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
+
 ///////////
 // Mocks //
 ///////////

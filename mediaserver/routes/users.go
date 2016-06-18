@@ -29,28 +29,32 @@ func newUsersRouter(router *mux.Router) {
 	// POST to the route /Users/New creates a new user. This action requires
 	// admin status. The username is sent in the body with the parameter name of 'Name'.
 	usersRouter.HandleFunc("/New", middleware.WithContext(
-		middleware.WithDB(
-			controllers.NewUser))).Methods("POST")
+		middleware.Admin(
+			middleware.WithDB(
+				controllers.NewUser)))).Methods("POST")
 
 	// GET to the route /Users/{uid} returns the data about a user. This actions
 	// requires admin status or being login as the user.
 	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
 		middleware.WithPathVars(
-			middleware.WithDB(
-				controllers.GetUserById)))).Methods("GET")
+			middleware.AdminOrLoggedInUser(
+				middleware.WithDB(
+					controllers.GetUserById))))).Methods("GET")
 
 	// GET to the route "/Users/{Id}/Offline" gets an offline user record by Id.
 	usersRouter.HandleFunc("/{uid}/Offline", middleware.WithContext(
 		middleware.WithPathVars(
-			middleware.WithDB(
-				controllers.GetOfflineUserById)))).Methods("GET")
+			middleware.AdminOrLoggedInUser(
+				middleware.WithDB(
+					controllers.GetOfflineUserById))))).Methods("GET")
 
 	//A DELETE to /Users/{uid} deletes a user and all it's item data.
 	// This action requires admin rights.
 	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
 		middleware.WithPathVars(
-			middleware.WithDB(
-				controllers.DeleteUser)))).Methods("DELETE")
+			middleware.Admin(
+				middleware.WithDB(
+					controllers.DeleteUser))))).Methods("DELETE")
 
 	// A POST to /Users/{uid}/Authenticate authenticates a user.
 	// The password is past in the body in the parameter password.
@@ -58,16 +62,21 @@ func newUsersRouter(router *mux.Router) {
 		middleware.WithContext(
 			middleware.WithPathVars(
 				middleware.VerifyIds([]string{"uid"},
-					middleware.WithQueryVars(
-						middleware.WithDB(
-							controllers.Authenticate)))))).Methods("POST")
+					middleware.WithDB(
+						controllers.Authenticate))))).Methods("POST")
 
 	// A POST to /Users/AuthenticateByName authenticates a user.
 	// Username and password is past in the body as the parameters Username and password.
 	usersRouter.HandleFunc("/AuthenticateByName", middleware.WithContext(
-		middleware.WithQueryVars(
-			middleware.WithDB(
-				controllers.AuthenticateByName)))).Methods("POST")
+		middleware.WithDB(
+			controllers.AuthenticateByName))).Methods("POST")
+
+	// A POST to /Users/{uid}/Logout logs the user out.
+	usersRouter.HandleFunc("/{uid}/Logout",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.VerifyIds([]string{"uid"},
+					controllers.LogoutUser)))).Methods("POST")
 
 	// A POST to /Users/{Id}/Password updates a user's password.
 	// New password and current password are past as body parameters
@@ -75,9 +84,10 @@ func newUsersRouter(router *mux.Router) {
 	usersRouter.HandleFunc("/{uid}/Password", middleware.WithContext(
 		middleware.WithPathVars(
 			middleware.VerifyIds([]string{"uid"},
-				middleware.WithQueryVars(
-					middleware.WithDB(
-						controllers.ChangeUserPassword)))))).Methods("POST")
+				middleware.AdminOrLoggedInUser(
+					middleware.WithQueryVars(
+						middleware.WithDB(
+							controllers.ChangeUserPassword))))))).Methods("POST")
 
 	//[Route("/Users/{Id}/EasyPassword", "POST", Summary = "Updates a user's easy password")]
 	//[Authenticated]
@@ -168,8 +178,9 @@ func newUsersRouter(router *mux.Router) {
 	usersRouter.HandleFunc("/{uid}/Items/{id}",
 		middleware.WithContext(
 			middleware.WithPathVars(
-				middleware.WithDB(
-					controllers.UserItemHandler)))).Methods("GET")
+				middleware.AdminOrLoggedInUser(
+					middleware.WithDB(
+						controllers.UserItemHandler))))).Methods("GET")
 
 	//[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
 	//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]

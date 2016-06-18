@@ -18,8 +18,15 @@ func AddSession(session *gomediacenter.Session) {
 	newSession <- session
 }
 
+// GetSession gets a session object from the manager.
+func GetSession(id string) *gomediacenter.Session {
+	sessionReq <- id
+	return <-sessionRes
+}
+
 // RemoveSession removes an active session so user is logged out.
 func RemoveSession(uid, sessionKey string) bool {
+	log.Printf("Removing session %s for user: %s\n", sessionKey, uid)
 	sessionReq <- sessionKey
 	session := <-sessionRes
 	if session.UserId != uid {
@@ -44,7 +51,12 @@ func Run() chan struct{} {
 		for {
 			select {
 			case req := <-sessionReq:
-				sessionRes <- sessions[req]
+				s, ok := sessions[req]
+				if ok {
+					sessionRes <- s
+				} else {
+					sessionRes <- nil
+				}
 			case session := <-newSession:
 				sessions[session.Id.Hex()] = session
 				saveSessionMap(sessions)

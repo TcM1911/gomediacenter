@@ -6,6 +6,7 @@ type Session struct {
 	Id            bson.ObjectId `bson:"_id" json:"Id"`
 	UserName      string        `bson:"userName" json:"UserName"`
 	UserId        string        `bson:"uid" json:"UserId"`
+	Admin         bool          `json:"-"`
 	RemoteControl bool          `bson:"remoteControl" json:"SupportRemoteControl"`
 	Commands      []string      `bson:"commads" json:"SupportedCommands,array"`
 	MediaTypes    []string      `bson:"mediaType" json:"PlayableMediaTypes,array"`

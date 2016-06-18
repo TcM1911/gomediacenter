@@ -3,14 +3,27 @@
 package routes_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/tcm1911/gomediacenter"
+	"github.com/tcm1911/gomediacenter/db"
+	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 	"github.com/tcm1911/gomediacenter/mediaserver/routes"
+	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/ory-am/dockertest.v2"
 )
+
+const AUTH_TEST_HEADER = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
 
 var SERVER_URL string
 
@@ -21,6 +34,7 @@ func init() {
 }
 
 func TestAPIGetRoutes(t *testing.T) {
+	t.SkipNow()
 	tests := []struct {
 		url  string
 		code int
@@ -296,4 +310,247 @@ func TestAPIGetRoutes(t *testing.T) {
 		}
 	}
 
+}
+
+func TestGetPublicUserListing(t *testing.T) {
+	assert := assert.New(t)
+
+	resp, _ := http.Get(SERVER_URL + "/Users/Public")
+	var users []gomediacenter.PublicUserResponse
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		assert.Fail("Error when decoding the repsonse body: " + err.Error())
+	}
+
+	adminUserReturned, normalUserReturned := false, false
+	for _, user := range users {
+		switch user.Name {
+		case ADMIN_NAME:
+			adminUserReturned = ADMIN_ID.Hex() == user.Id.Hex()
+		case USER_NAME:
+			normalUserReturned = USER_ID.Hex() == user.Id.Hex()
+		}
+	}
+	assert.True(adminUserReturned, "Admin user should be in the user listing.")
+	assert.True(normalUserReturned, "Normal user should be in the user listing.")
+}
+
+func TestAuthenticatingUserByName(t *testing.T) {
+	assert := assert.New(t)
+
+	resp, code, err := gomediacenter.AuthenticateUserByNameReqest(
+		ADMIN_NAME,
+		ADMIN_PASSWORD,
+		SERVER_URL,
+		AUTH_TEST_HEADER)
+	if err != nil {
+		assert.Fail("Error when sending login request: " + err.Error())
+	}
+
+	assert.Equal(http.StatusOK, code)
+
+	assert.NotNil(resp.Token, "Nil token.")
+
+	ADMIN_TOKEN = resp.Token
+
+	if ADMIN_TOKEN == "" {
+		t.FailNow()
+	}
+}
+
+func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
+	assert := assert.New(t)
+
+	resp, code, err := gomediacenter.AuthenticateUserByIdReqest(
+		ADMIN_ID.Hex(),
+		ADMIN_PASSWORD,
+		SERVER_URL,
+		AUTH_TEST_HEADER)
+	if err != nil {
+		assert.Fail("Error when sending login request:" + err.Error())
+	}
+
+	assert.Equal(http.StatusOK, code)
+
+	token := resp.Token
+	log.Println("Session token:", token)
+	assert.NotNil(token, "Nil token.")
+
+	// Logging out.
+	loggedOut, err := gomediacenter.LogoutUserReq(ADMIN_ID.Hex(), token, SERVER_URL)
+	if err != nil {
+		assert.Fail("Failed to logout: " + err.Error())
+	}
+	assert.True(loggedOut)
+}
+
+func TestShouldOnlyAccessUserDataIfLoggedInAsCorrectUser(t *testing.T) {
+	assert := assert.New(t)
+	adminUser, code, err := gomediacenter.GetUser(ADMIN_ID.Hex(), ADMIN_TOKEN, SERVER_URL)
+	if err != nil {
+		assert.Fail("Error when getting admin user data: " + err.Error())
+	}
+	assert.Equal(ADMIN_NAME, adminUser.Name)
+	assert.Equal(http.StatusOK, code)
+
+	token := bson.NewObjectId()
+	adminByNormalUser, failCode, err := gomediacenter.GetUser(ADMIN_ID.Hex(), token.Hex(), SERVER_URL)
+	if err == nil {
+		assert.Fail("This request should fail.")
+	}
+	assert.Nil(adminByNormalUser, "Body should be nil.")
+	assert.Equal(http.StatusUnauthorized, failCode)
+}
+
+func TestAdminCanAccessUserDataIfLoggedIn(t *testing.T) {
+	assert := assert.New(t)
+	user, code, err := gomediacenter.GetUser(USER_ID.Hex(), ADMIN_TOKEN, SERVER_URL)
+	if err != nil {
+		assert.Fail("Error when getting user data: " + err.Error())
+	}
+	assert.Equal(USER_NAME, user.Name)
+	assert.Equal(http.StatusOK, code)
+}
+
+func TestCreateNewUserAndChangeThePassword(t *testing.T) {
+	assert := assert.New(t)
+	un := "newUserName"
+	user, err := gomediacenter.CreateUser(un, ADMIN_TOKEN, SERVER_URL)
+	if err != nil {
+		assert.Fail(err.Error())
+		return
+	}
+	assert.Equal(un, user.Name)
+
+	setPass := "setPassword"
+	code, err := gomediacenter.ChangePassword(
+		"",
+		setPass,
+		ADMIN_TOKEN,
+		user.Id.Hex(),
+		SERVER_URL)
+	if err != nil {
+		assert.Fail(err.Error())
+		return
+	}
+	assert.Equal(http.StatusOK, code)
+
+	resp, code, err := gomediacenter.AuthenticateUserByIdReqest(
+		user.Id.Hex(),
+		setPass,
+		SERVER_URL,
+		AUTH_TEST_HEADER)
+	if err != nil {
+		assert.Fail("Authentication failed: " + err.Error())
+		return
+	}
+	assert.Equal(http.StatusOK, code)
+	assert.Equal(un, resp.User.Name)
+
+	// User changes the password.
+	userToken := resp.Token
+	changedPass := "changedPassword"
+	code, err = gomediacenter.ChangePassword(
+		setPass,
+		changedPass,
+		userToken,
+		resp.User.Id.Hex(),
+		SERVER_URL)
+	if err != nil {
+		assert.Fail("Failed to change the user password.")
+		return
+	}
+	assert.Equal(http.StatusOK, code)
+
+	// User logs out.
+	ok, err := gomediacenter.LogoutUserReq(resp.User.Id.Hex(), userToken, SERVER_URL)
+	if err != nil {
+		assert.Fail("Failed to logout.")
+		return
+	}
+	assert.True(ok, "Did user logout.")
+
+	// Admin removes user account.
+	code, err = gomediacenter.DeleteUser(resp.User.Id.Hex(), ADMIN_TOKEN, SERVER_URL)
+	if err != nil {
+		assert.Fail("Failed to remove the user")
+		return
+	}
+	assert.Equal(http.StatusOK, code)
+}
+
+func TestMain(m *testing.M) {
+	log.Println("Starting docker container...")
+	c, err := dockertest.ConnectToMongoDB(15, 5*time.Second, func(url string) bool {
+		log.Println("Connecting to the database...")
+		db.Connect(url)
+		session := db.GetDBSession()
+		return session.Ping() == nil
+	})
+	defer db.Disconnect()
+	if err != nil {
+		log.Fatalln("Error while starting up the container:", err)
+	}
+	log.Println("Connected to the database.")
+
+	// DB setup
+	setupDB()
+
+	// Start session manager
+	shutdown := auth.Run()
+
+	// Run tests
+	resutls := m.Run()
+
+	// Teardown
+	log.Println("Closing down and removing the container.")
+	shutdown <- struct{}{}
+	<-shutdown
+	if err := c.KillRemove(); err != nil {
+		log.Println("Error when tearing down the container:", err)
+	}
+
+	// Exit
+	os.Exit(resutls)
+}
+
+const (
+	ADMIN_NAME     = "admin"
+	ADMIN_PASSWORD = "adminpassword"
+	USER_NAME      = "normaluser"
+	USER_PASSWORD  = "userpassword"
+)
+
+var ADMIN_ID bson.ObjectId
+var ADMIN_TOKEN string
+var USER_ID bson.ObjectId
+
+func setupDB() {
+	db := db.GetDB()
+	defer db.Close()
+
+	// Admin user
+	adminUser := setupUser(ADMIN_NAME, ADMIN_PASSWORD, true)
+	ADMIN_ID = adminUser.Id
+	if err := db.AddNewUser(adminUser); err != nil {
+		log.Fatalln("Error while adding admin user to the database:", err)
+	}
+
+	// Normal user
+	user := setupUser(USER_NAME, USER_PASSWORD, false)
+	USER_ID = user.Id
+	if err := db.AddNewUser(user); err != nil {
+		log.Fatalln("Error while adding normal user to the database:", err)
+	}
+}
+
+func setupUser(u, pw string, admin bool) *gomediacenter.User {
+	user := gomediacenter.NewUser(u)
+	user.Policy.Admin = true
+	password, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatalln("Error when generating password for", u)
+	}
+	user.Password = password
+	user.HasPasswd = admin
+	return user
 }
