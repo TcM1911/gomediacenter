@@ -15,7 +15,7 @@ import (
 // Structs //
 /////////////
 
-// The user struct holds all the information about a user.
+// User struct holds all the information about a user.
 type User struct {
 	Name                string        `json:"Name"`
 	Id                  bson.ObjectId `json:"id" bson:"_id"`
@@ -80,7 +80,7 @@ type UserPolicy struct {
 	PublicSharing        bool `json:"EnablePublicSharing"`
 }
 
-// UserItemData holds data for an item with regards to a user. For example:
+// ItemUserData holds data for an item with regards to a user. For example:
 // how many times the item has been played, if it's a favorite.
 type ItemUserData struct {
 	Id               string    `json:"-" bson:"id"`
@@ -168,7 +168,6 @@ func sendAuthenticationRequest(body LoginRequest, url, header string) (*AuthUser
 	if err != nil {
 		return nil, resp.StatusCode, err
 	}
-	defer resp.Body.Close()
 
 	var decoded AuthUserResponse
 	return &decoded, resp.StatusCode, json.NewDecoder(resp.Body).Decode(&decoded)
@@ -192,7 +191,6 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
@@ -217,7 +215,6 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 	if err != nil {
 		return nil, code, err
 	}
-	defer resp.Body.Close()
 
 	if code != http.StatusOK {
 		return nil, code, errors.New(
@@ -248,7 +245,6 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("request returned wrong status code")
@@ -276,7 +272,6 @@ func ChangePassword(current, new, token, uid, apiServer string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
 	return resp.StatusCode, nil
 }
 
@@ -289,6 +284,26 @@ func DeleteUser(uid, token, apiServer string) (int, error) {
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
 	return resp.StatusCode, err
+}
+
+func GetAllUsers(token, apiServer string) ([]*User, error) {
+	url := apiServer + "/Users"
+	r, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	setHeader(r, token)
+	resp, err := http.DefaultClient.Do(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var users []*User
+	err = json.NewDecoder(resp.Body).Decode(&users)
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 func setHeader(r *http.Request, token string) {

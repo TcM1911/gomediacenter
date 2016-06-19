@@ -33,7 +33,7 @@ func init() {
 	SERVER_URL = server.URL
 }
 
-func TestAPIGetRoutes(t *testing.T) {
+func testAPIGetRoutes(t *testing.T) {
 	t.SkipNow()
 	tests := []struct {
 		url  string
@@ -476,6 +476,16 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 		return
 	}
 	assert.Equal(http.StatusOK, code)
+}
+
+func TestAdminCanRequestAllUsersData(t *testing.T) {
+	assert := assert.New(t)
+	users, err := gomediacenter.GetAllUsers(ADMIN_TOKEN, SERVER_URL)
+	if err != nil {
+		assert.Fail("Request failed: " + err.Error())
+		return
+	}
+	assert.Equal(2, len(users), "Should return 2 users")
 }
 
 func TestMain(m *testing.M) {

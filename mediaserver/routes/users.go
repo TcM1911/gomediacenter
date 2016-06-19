@@ -17,8 +17,9 @@ func newUsersRouter(router *mux.Router) {
 	// IsDisabled, and IsGuest.
 	router.HandleFunc("/Users", middleware.WithContext(
 		middleware.WithQueryVars(
-			middleware.WithDB(
-				controllers.GetAllUsers)))).Methods("GET")
+			middleware.Admin(
+				middleware.WithDB(
+					controllers.GetAllUsers))))).Methods("GET")
 
 	// GET to the route"/Users/Public" gets a list of publicly visible users
 	// for display on a login screen.
