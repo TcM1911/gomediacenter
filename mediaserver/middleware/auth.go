@@ -8,6 +8,8 @@ import (
 	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 )
 
+// AdminOrLoggedInUser only calls the next HandlerFunc if the session is and admin
+// or a user session with the same UID as the path.
 func AdminOrLoggedInUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pathVars := controllers.GetContextVar(r, "pathVars").(map[string]string)
@@ -27,6 +29,7 @@ func AdminOrLoggedInUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// Admin only calls the next function if the session is an admin session.
 func Admin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get(gomediacenter.SESSION_KEY_HEADER)
