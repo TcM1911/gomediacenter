@@ -67,7 +67,7 @@ func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
 	var publicList []*gomediacenter.PublicUserResponse
 	for _, user := range users {
 		publicList = append(publicList,
-			&gomediacenter.PublicUserResponse{Name: user.Name, Id: user.Id})
+			&gomediacenter.PublicUserResponse{Name: user.Name, ID: user.ID})
 	}
 	writeJsonBody(w, publicList)
 }
@@ -294,7 +294,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 	authToken := bson.NewObjectId()
 	session := &gomediacenter.Session{
 		Id:            authToken,
-		UserId:        user.Id.Hex(),
+		UserId:        user.ID.Hex(),
 		UserName:      user.Name,
 		Admin:         user.Policy.Admin,
 		DeviceId:      client.DeviceId,

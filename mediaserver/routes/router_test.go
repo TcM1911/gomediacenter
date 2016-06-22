@@ -23,14 +23,14 @@ import (
 	"gopkg.in/ory-am/dockertest.v2"
 )
 
-const AUTH_TEST_HEADER = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
+const authTestHeader = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
 
-var SERVER_URL string
+var serverURL string
 
 func init() {
 	handler := routes.NewAPIRouter()
 	server := httptest.NewServer(handler)
-	SERVER_URL = server.URL
+	serverURL = server.URL
 }
 
 func testAPIGetRoutes(t *testing.T) {
@@ -292,7 +292,7 @@ func testAPIGetRoutes(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		url := SERVER_URL + test.url
+		url := serverURL + test.url
 
 		fmt.Printf("Testing GET request to %s\n", url)
 		resp, _ := http.Get(url)
@@ -315,7 +315,7 @@ func testAPIGetRoutes(t *testing.T) {
 func TestGetPublicUserListing(t *testing.T) {
 	assert := assert.New(t)
 
-	resp, _ := http.Get(SERVER_URL + "/Users/Public")
+	resp, _ := http.Get(serverURL + "/Users/Public")
 	var users []gomediacenter.PublicUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
 		assert.Fail("Error when decoding the repsonse body: " + err.Error())
@@ -324,10 +324,10 @@ func TestGetPublicUserListing(t *testing.T) {
 	adminUserReturned, normalUserReturned := false, false
 	for _, user := range users {
 		switch user.Name {
-		case ADMIN_NAME:
-			adminUserReturned = ADMIN_ID.Hex() == user.Id.Hex()
-		case USER_NAME:
-			normalUserReturned = USER_ID.Hex() == user.Id.Hex()
+		case adminName:
+			adminUserReturned = adminID.Hex() == user.ID.Hex()
+		case userName:
+			normalUserReturned = userID.Hex() == user.ID.Hex()
 		}
 	}
 	assert.True(adminUserReturned, "Admin user should be in the user listing.")
@@ -338,10 +338,10 @@ func TestAuthenticatingUserByName(t *testing.T) {
 	assert := assert.New(t)
 
 	resp, code, err := gomediacenter.AuthenticateUserByNameReqest(
-		ADMIN_NAME,
-		ADMIN_PASSWORD,
-		SERVER_URL,
-		AUTH_TEST_HEADER)
+		adminName,
+		adminPassword,
+		serverURL,
+		authTestHeader)
 	if err != nil {
 		assert.Fail("Error when sending login request: " + err.Error())
 	}
@@ -350,9 +350,9 @@ func TestAuthenticatingUserByName(t *testing.T) {
 
 	assert.NotNil(resp.Token, "Nil token.")
 
-	ADMIN_TOKEN = resp.Token
+	adminToken = resp.Token
 
-	if ADMIN_TOKEN == "" {
+	if adminToken == "" {
 		t.FailNow()
 	}
 }
@@ -360,11 +360,11 @@ func TestAuthenticatingUserByName(t *testing.T) {
 func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
 	assert := assert.New(t)
 
-	resp, code, err := gomediacenter.AuthenticateUserByIdReqest(
-		ADMIN_ID.Hex(),
-		ADMIN_PASSWORD,
-		SERVER_URL,
-		AUTH_TEST_HEADER)
+	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(
+		adminID.Hex(),
+		adminPassword,
+		serverURL,
+		authTestHeader)
 	if err != nil {
 		assert.Fail("Error when sending login request:" + err.Error())
 	}
@@ -376,7 +376,7 @@ func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
 	assert.NotNil(token, "Nil token.")
 
 	// Logging out.
-	loggedOut, err := gomediacenter.LogoutUserReq(ADMIN_ID.Hex(), token, SERVER_URL)
+	loggedOut, err := gomediacenter.LogoutUserReq(adminID.Hex(), token, serverURL)
 	if err != nil {
 		assert.Fail("Failed to logout: " + err.Error())
 	}
@@ -385,15 +385,15 @@ func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
 
 func TestShouldOnlyAccessUserDataIfLoggedInAsCorrectUser(t *testing.T) {
 	assert := assert.New(t)
-	adminUser, code, err := gomediacenter.GetUser(ADMIN_ID.Hex(), ADMIN_TOKEN, SERVER_URL)
+	adminUser, code, err := gomediacenter.GetUser(adminID.Hex(), adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Error when getting admin user data: " + err.Error())
 	}
-	assert.Equal(ADMIN_NAME, adminUser.Name)
+	assert.Equal(adminName, adminUser.Name)
 	assert.Equal(http.StatusOK, code)
 
 	token := bson.NewObjectId()
-	adminByNormalUser, failCode, err := gomediacenter.GetUser(ADMIN_ID.Hex(), token.Hex(), SERVER_URL)
+	adminByNormalUser, failCode, err := gomediacenter.GetUser(adminID.Hex(), token.Hex(), serverURL)
 	if err == nil {
 		assert.Fail("This request should fail.")
 	}
@@ -403,18 +403,18 @@ func TestShouldOnlyAccessUserDataIfLoggedInAsCorrectUser(t *testing.T) {
 
 func TestAdminCanAccessUserDataIfLoggedIn(t *testing.T) {
 	assert := assert.New(t)
-	user, code, err := gomediacenter.GetUser(USER_ID.Hex(), ADMIN_TOKEN, SERVER_URL)
+	user, code, err := gomediacenter.GetUser(userID.Hex(), adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Error when getting user data: " + err.Error())
 	}
-	assert.Equal(USER_NAME, user.Name)
+	assert.Equal(userName, user.Name)
 	assert.Equal(http.StatusOK, code)
 }
 
 func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert := assert.New(t)
 	un := "newUserName"
-	user, err := gomediacenter.CreateUser(un, ADMIN_TOKEN, SERVER_URL)
+	user, err := gomediacenter.CreateUser(un, adminToken, serverURL)
 	if err != nil {
 		assert.Fail(err.Error())
 		return
@@ -425,20 +425,20 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	code, err := gomediacenter.ChangePassword(
 		"",
 		setPass,
-		ADMIN_TOKEN,
-		user.Id.Hex(),
-		SERVER_URL)
+		adminToken,
+		user.ID.Hex(),
+		serverURL)
 	if err != nil {
 		assert.Fail(err.Error())
 		return
 	}
 	assert.Equal(http.StatusOK, code)
 
-	resp, code, err := gomediacenter.AuthenticateUserByIdReqest(
-		user.Id.Hex(),
+	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(
+		user.ID.Hex(),
 		setPass,
-		SERVER_URL,
-		AUTH_TEST_HEADER)
+		serverURL,
+		authTestHeader)
 	if err != nil {
 		assert.Fail("Authentication failed: " + err.Error())
 		return
@@ -453,8 +453,8 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 		setPass,
 		changedPass,
 		userToken,
-		resp.User.Id.Hex(),
-		SERVER_URL)
+		resp.User.ID.Hex(),
+		serverURL)
 	if err != nil {
 		assert.Fail("Failed to change the user password.")
 		return
@@ -462,7 +462,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert.Equal(http.StatusOK, code)
 
 	// User logs out.
-	ok, err := gomediacenter.LogoutUserReq(resp.User.Id.Hex(), userToken, SERVER_URL)
+	ok, err := gomediacenter.LogoutUserReq(resp.User.ID.Hex(), userToken, serverURL)
 	if err != nil {
 		assert.Fail("Failed to logout.")
 		return
@@ -470,7 +470,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert.True(ok, "Did user logout.")
 
 	// Admin removes user account.
-	code, err = gomediacenter.DeleteUser(resp.User.Id.Hex(), ADMIN_TOKEN, SERVER_URL)
+	code, err = gomediacenter.DeleteUser(resp.User.ID.Hex(), adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Failed to remove the user")
 		return
@@ -480,7 +480,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 
 func TestAdminCanRequestAllUsersData(t *testing.T) {
 	assert := assert.New(t)
-	users, err := gomediacenter.GetAllUsers(ADMIN_TOKEN, SERVER_URL)
+	users, err := gomediacenter.GetAllUsers(adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Request failed: " + err.Error())
 		return
@@ -524,30 +524,30 @@ func TestMain(m *testing.M) {
 }
 
 const (
-	ADMIN_NAME     = "admin"
-	ADMIN_PASSWORD = "adminpassword"
-	USER_NAME      = "normaluser"
-	USER_PASSWORD  = "userpassword"
+	adminName     = "admin"
+	adminPassword = "adminpassword"
+	userName      = "normaluser"
+	userPassword  = "userpassword"
 )
 
-var ADMIN_ID bson.ObjectId
-var ADMIN_TOKEN string
-var USER_ID bson.ObjectId
+var adminID bson.ObjectId
+var adminToken string
+var userID bson.ObjectId
 
 func setupDB() {
 	db := db.GetDB()
 	defer db.Close()
 
 	// Admin user
-	adminUser := setupUser(ADMIN_NAME, ADMIN_PASSWORD, true)
-	ADMIN_ID = adminUser.Id
+	adminUser := setupUser(adminName, adminPassword, true)
+	adminID = adminUser.ID
 	if err := db.AddNewUser(adminUser); err != nil {
 		log.Fatalln("Error while adding admin user to the database:", err)
 	}
 
 	// Normal user
-	user := setupUser(USER_NAME, USER_PASSWORD, false)
-	USER_ID = user.Id
+	user := setupUser(userName, userPassword, false)
+	userID = user.ID
 	if err := db.AddNewUser(user); err != nil {
 		log.Fatalln("Error while adding normal user to the database:", err)
 	}

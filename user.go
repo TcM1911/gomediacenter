@@ -3,11 +3,11 @@ package gomediacenter
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/go-errors/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -18,7 +18,7 @@ import (
 // User struct holds all the information about a user.
 type User struct {
 	Name                string        `json:"Name"`
-	Id                  bson.ObjectId `json:"id" bson:"_id"`
+	ID                  bson.ObjectId `json:"id" bson:"_id"`
 	HasPasswd           bool          `json:"HasPassword" bson:"haspassword"`
 	HasConfiguredPasswd bool          `json:"HasConfiguredPassword"`
 	HasConfigEasyPasswd bool          `json:"HasConfiguredEasyPassword"`
@@ -83,8 +83,8 @@ type UserPolicy struct {
 // ItemUserData holds data for an item with regards to a user. For example:
 // how many times the item has been played, if it's a favorite.
 type ItemUserData struct {
-	Id               string    `json:"-" bson:"id"`
-	Uid              string    `json:"-" bson:"uid"`
+	ID               string    `json:"-" bson:"id"`
+	UID              string    `json:"-" bson:"uid"`
 	PlayedPercentage float32   `json:"PlayedPercentage" bson:"percent"`
 	PlaybackPosTicks int       `json:"PlaybackPositionTicks" bson:"pos"`
 	PlayCount        int       `json:"PlayCount" bson:"count"`
@@ -126,7 +126,7 @@ func NewUser(name string) *User {
 	id := bson.NewObjectId()
 	return &User{
 		Name:          name,
-		Id:            id,
+		ID:            id,
 		Configuration: config,
 		Policy:        policy,
 	}
@@ -135,8 +135,8 @@ func NewUser(name string) *User {
 // NewItemUserData returns a default ItemUserData.
 func NewItemUserData(id, uid string) *ItemUserData {
 	itemUserData := new(ItemUserData)
-	itemUserData.Id = id
-	itemUserData.Uid = uid
+	itemUserData.ID = id
+	itemUserData.UID = uid
 	return itemUserData
 }
 
@@ -147,8 +147,8 @@ func AuthenticateUserByNameReqest(name, passwd, apiURL, authHeader string) (*Aut
 	return sendAuthenticationRequest(reqBody, url, authHeader)
 }
 
-// AuthenticateUserByIdReqest creates and sends a login request to the API.
-func AuthenticateUserByIdReqest(id, passwd, apiURL, authHeader string) (*AuthUserResponse, int, error) {
+// AuthenticateUserByIDReqest creates and sends a login request to the API.
+func AuthenticateUserByIDReqest(id, passwd, apiURL, authHeader string) (*AuthUserResponse, int, error) {
 	reqBody := LoginRequest{Name: "", Password: passwd}
 	url := apiURL + "/Users/" + id + "/Authenticate"
 	return sendAuthenticationRequest(reqBody, url, authHeader)
@@ -156,7 +156,9 @@ func AuthenticateUserByIdReqest(id, passwd, apiURL, authHeader string) (*AuthUse
 
 func sendAuthenticationRequest(body LoginRequest, url, header string) (*AuthUserResponse, int, error) {
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(body)
+	if err := json.NewEncoder(b).Encode(body); err != nil {
+		return nil, 0, err
+	}
 
 	req, err := http.NewRequest(http.MethodPost, url, b)
 	if err != nil {
@@ -165,6 +167,7 @@ func sendAuthenticationRequest(body LoginRequest, url, header string) (*AuthUser
 	req.Header.Add(SESSIION_AUTH_HEADER, header)
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, resp.StatusCode, err
 	}
@@ -188,14 +191,14 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 	req.Header.Add(SESSION_KEY_HEADER, token)
 
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return false, err
 	}
 	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
-	return false, errors.New(
-		fmt.Sprintf("logout request failed with status code: %d", resp.StatusCode))
+	return false, fmt.Errorf("logout request failed with status code: %d", resp.StatusCode)
 }
 
 // GetUser gets the user data from the api server.
@@ -211,14 +214,14 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
 	code := resp.StatusCode
 	if err != nil {
 		return nil, code, err
 	}
 
 	if code != http.StatusOK {
-		return nil, code, errors.New(
-			fmt.Sprintf("Request failed with return code: %d\n", resp.StatusCode))
+		return nil, code, fmt.Errorf("Request failed with return code: %d\n", resp.StatusCode)
 	}
 
 	var user User
@@ -228,13 +231,17 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 	return &user, code, err
 }
 
+// CreateUser sends a create new user request to the api and return the new user struct created.
 func CreateUser(name, token, apiServer string) (*User, error) {
 	if name == "" {
 		return nil, errors.New("empty username")
 	}
 	url := apiServer + "/Users/New"
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(NewUserRequest{Name: name})
+	if err := json.NewEncoder(b).Encode(NewUserRequest{Name: name}); err != nil {
+		return nil, err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, url, b)
 	if err != nil {
 		return nil, err
@@ -242,6 +249,7 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -257,9 +265,12 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	return &user, nil
 }
 
+// ChangePassword sends a password change request to the api backend.
 func ChangePassword(current, new, token, uid, apiServer string) (int, error) {
 	b := &bytes.Buffer{}
-	json.NewEncoder(b).Encode(PasswordRequest{New: new, Current: current})
+	if err := json.NewEncoder(b).Encode(PasswordRequest{New: new, Current: current}); err != nil {
+		return 0, err
+	}
 
 	url := fmt.Sprintf("%s/Users/%s/Password", apiServer, uid)
 	req, err := http.NewRequest(http.MethodPost, url, b)
@@ -269,12 +280,14 @@ func ChangePassword(current, new, token, uid, apiServer string) (int, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return 0, err
 	}
 	return resp.StatusCode, nil
 }
 
+// DeleteUser sends a delete user request to the api server.
 func DeleteUser(uid, token, apiServer string) (int, error) {
 	url := fmt.Sprintf("%s/Users/%s", apiServer, uid)
 	r, err := http.NewRequest(http.MethodDelete, url, nil)
@@ -283,9 +296,11 @@ func DeleteUser(uid, token, apiServer string) (int, error) {
 	}
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
+	defer resp.Body.Close()
 	return resp.StatusCode, err
 }
 
+// GetAllUsers gets a slice with all the users from the api server.
 func GetAllUsers(token, apiServer string) ([]*User, error) {
 	url := apiServer + "/Users"
 	r, err := http.NewRequest(http.MethodGet, url, nil)
@@ -294,6 +309,7 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 	}
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}

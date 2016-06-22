@@ -84,7 +84,7 @@ func TestGetUserById(t *testing.T) {
 	// Create test user.
 	user := gomediacenter.NewUser("testUser")
 	uid := bson.NewObjectId()
-	user.Id = uid
+	user.ID = uid
 
 	// Request
 	r, _ := http.NewRequest("GET", "/", nil)
@@ -169,7 +169,7 @@ func TestParseAuthHeader(t *testing.T) {
 func TestSettingAnUserPassword(t *testing.T) {
 	assert := assert.New(t)
 
-	user := &gomediacenter.User{Id: bson.NewObjectId(), Name: "User", HasPasswd: false}
+	user := &gomediacenter.User{ID: bson.NewObjectId(), Name: "User", HasPasswd: false}
 	r, err := passwordChangeContext(user, "", "password")
 	defer CloseContext(r)
 	if err != nil {
@@ -193,7 +193,7 @@ func TestChangeUserPassword(t *testing.T) {
 	}
 
 	user := &gomediacenter.User{
-		Id:        bson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		Name:      "User",
 		HasPasswd: true,
 		Password:  currentHash,
@@ -221,7 +221,7 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 	}
 
 	user := &gomediacenter.User{
-		Id:        bson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		Name:      "User",
 		HasPasswd: true,
 		Password:  currentHash,
@@ -242,8 +242,8 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) (*http.Request, error) {
 	// Mock setup.
 	db := new(mockDB)
-	db.On("ChangeUserPassword", user.Id.Hex(), mock.Anything).Return(nil)
-	db.On("GetUserById", user.Id.Hex()).Return(user, nil)
+	db.On("ChangeUserPassword", user.ID.Hex(), mock.Anything).Return(nil)
+	db.On("GetUserById", user.ID.Hex()).Return(user, nil)
 
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(gomediacenter.PasswordRequest{
@@ -258,7 +258,7 @@ func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string
 
 	SetContextVar(r, "db", db)
 	pathVars := make(map[string]string)
-	pathVars["uid"] = user.Id.Hex()
+	pathVars["uid"] = user.ID.Hex()
 	SetContextVar(r, "pathVars", pathVars)
 
 	return r, nil
@@ -326,7 +326,7 @@ func TestAuthenticateByNameWithoutCorrectHeader(t *testing.T) {
 
 func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHeader bool) (*http.Request, error) {
 
-	user := &gomediacenter.User{Id: bson.NewObjectId()}
+	user := &gomediacenter.User{ID: bson.NewObjectId()}
 
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(gomediacenter.LoginRequest{
@@ -341,7 +341,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 
 	if bodyUserName == "" {
 		pathVars := make(map[string]string)
-		pathVars["uid"] = user.Id.Hex()
+		pathVars["uid"] = user.ID.Hex()
 		SetContextVar(r, "pathVars", pathVars)
 	}
 
@@ -357,7 +357,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 
 	// Mock setup.
 	db := new(mockDB)
-	db.On("GetUserById", user.Id.Hex()).Return(user, nil)
+	db.On("GetUserById", user.ID.Hex()).Return(user, nil)
 	db.On("GetUserByName", bodyUserName).Return(user, nil)
 	SetContextVar(r, "db", db)
 

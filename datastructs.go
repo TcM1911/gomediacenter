@@ -4,7 +4,7 @@ import "gopkg.in/mgo.v2/bson"
 
 type PublicUserResponse struct {
 	Name string        `json:"Name"`
-	Id   bson.ObjectId `json:"id"`
+	ID   bson.ObjectId `json:"id"`
 }
 
 type LoginRequest struct {
