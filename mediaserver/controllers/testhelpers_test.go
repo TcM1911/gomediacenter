@@ -72,6 +72,11 @@ func (m *mockDB) ChangeUserPassword(uid string, newPassword []byte) error {
 	return args.Error(0)
 }
 
+func (m *mockDB) UpdateUser(uid string, user *gomediacenter.User) error {
+	args := m.Called(uid, user)
+	return args.Error(0)
+}
+
 //////////////////////
 // Helper functions //
 //////////////////////

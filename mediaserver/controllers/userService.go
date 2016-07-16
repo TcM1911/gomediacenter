@@ -226,8 +226,52 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 //[Route("/Users/{Id}/EasyPassword", "POST", Summary = "Updates a user's easy password")]
 //[Authenticated]
 
-//[Route("/Users/{Id}", "POST", Summary = "Updates a user")]
-//[Authenticated]
+// UpdateUser handles an user update request.
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("Handle user update request.")
+	var newUserStruct *gomediacenter.User
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&newUserStruct); err != nil {
+		logError(w, err,
+			"Error when decoding a user update request",
+			"Failed to decode user update request:", http.StatusBadRequest)
+		return
+	}
+
+	if newUserStruct == nil {
+		logError(w, nil, "The new user struct is nil, aborting",
+			"Bad request.", http.StatusBadRequest)
+		return
+	}
+
+	db, ok := GetContextVar(r, "db").(db.UserManager)
+	if !ok {
+		logError(w, nil, "Error when getting the database from the context.",
+			"Error when processing the request.", http.StatusInternalServerError)
+		return
+	}
+
+	pathVars, ok := GetContextVar(r, "pathVars").(map[string]string)
+	if !ok {
+		logError(w, nil, "Error when getting the pathvars from the context",
+			"Error when processing the request.", http.StatusBadRequest)
+		return
+	}
+	uid := pathVars["uid"]
+	if uid == "" {
+		logError(w, nil, "Error when getting the uid from the context",
+			"Error when processing the request.", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("User %s is being updated.\n", uid)
+	if err := db.UpdateUser(uid, newUserStruct); err != nil {
+		logError(w, err, "Error when processing the request",
+			"Error processing the request", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 //[Route("/Users/{Id}/Policy", "POST", Summary = "Updates a user policy")]
 //[Authenticated(Roles = "admin")]

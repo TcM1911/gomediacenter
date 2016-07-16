@@ -367,3 +367,31 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 
 	return r, nil
 }
+
+func TestUpdateUser(t *testing.T) {
+	assert := assert.New(t)
+
+	user := gomediacenter.NewUser("User Name")
+	uid := bson.NewObjectId()
+	user.ID = uid
+
+	body := &bytes.Buffer{}
+	json.NewEncoder(body).Encode(user)
+
+	r, _ := http.NewRequest(http.MethodPost, "/", body)
+	OpenContext(r)
+	defer CloseContext(r)
+
+	pathVars := make(map[string]string)
+	pathVars["uid"] = user.ID.Hex()
+	SetContextVar(r, "pathVars", pathVars)
+
+	db := new(mockDB)
+	db.On("UpdateUser", uid.Hex(), user).Return(nil)
+	SetContextVar(r, "db", db)
+
+	recorder := httptest.NewRecorder()
+	UpdateUser(recorder, r)
+
+	assert.Equal(http.StatusOK, recorder.Code, "Incorrect status code.")
+}

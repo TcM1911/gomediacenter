@@ -77,3 +77,8 @@ func (d *DB) ChangeUserPassword(uid string, newPassword []byte) error {
 		bson.ObjectIdHex(uid),
 		change)
 }
+
+// UpdateUser updates the user profile stored in the database.
+func (d *DB) UpdateUser(uid string, user *gomediacenter.User) error {
+	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).UpdateId(bson.ObjectIdHex(uid), user)
+}

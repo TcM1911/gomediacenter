@@ -2,12 +2,13 @@ package controllers
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"log"
-	"net/http"
 )
 
 func writeJsonBody(w http.ResponseWriter, v interface{}) {
@@ -49,4 +50,11 @@ func checkAndWriteHTTPErrorForIdQueries(id string, err error, logMsg string, w h
 		return false
 	}
 	return true
+}
+
+// logError writes logMsg to the log and returns the errMsg and the code to
+// the api caller.
+func logError(w http.ResponseWriter, e error, logMsg, errMsg string, code int) {
+	http.Error(w, errMsg, code)
+	log.Println(logMsg, e)
 }

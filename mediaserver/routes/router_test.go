@@ -488,6 +488,34 @@ func TestAdminCanRequestAllUsersData(t *testing.T) {
 	assert.Equal(2, len(users), "Should return 2 users")
 }
 
+func TestUpdateUserProfile(t *testing.T) {
+	assert := assert.New(t)
+	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(userID.Hex(), userPassword, serverURL, authTestHeader)
+	if code != http.StatusOK || err != nil {
+		assert.Fail("Authentcation failed.")
+		return
+	}
+	user := resp.User
+	user.Name = "Changed name"
+	code, err = gomediacenter.UpdateUser(user, user.ID.Hex(), resp.Token, serverURL)
+
+	assert.Equal(http.StatusOK, code, "Wrong status code returned.")
+
+	// Verify data in the db.
+	dbData, code, err := gomediacenter.GetUser(userID.Hex(), resp.Token, serverURL)
+	if code != http.StatusOK || err != nil {
+		assert.Fail("Failed to retrieve data from db.")
+		return
+	}
+
+	assert.Equal("Changed name", dbData.Name, "Wrong user name.")
+	assert.Equal(user, dbData, "Profile doesn't match.")
+
+	// Logout
+	ok, err := gomediacenter.LogoutUserReq(userID.Hex(), resp.Token, serverURL)
+	assert.True(ok, "Logout failed.")
+}
+
 func TestMain(m *testing.M) {
 	log.Println("Starting docker container...")
 	c, err := dockertest.ConnectToMongoDB(15, 5*time.Second, func(url string) bool {

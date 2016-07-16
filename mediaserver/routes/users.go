@@ -94,9 +94,13 @@ func newUsersRouter(router *mux.Router) {
 	//[Authenticated]
 	usersRouter.HandleFunc("/{id}/EasyPassword", notYetImplemented).Methods("POST")
 
-	//[Route("/Users/{Id}", "POST", Summary = "Updates a user")]
-	//[Authenticated]
-	usersRouter.HandleFunc("/{id}", notYetImplemented).Methods("POST")
+	// A POST to /Users/{uid} updates a user's profile.
+	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.VerifyIds([]string{"uid"},
+				middleware.AdminOrLoggedInUser(
+					middleware.WithDB(
+						controllers.UpdateUser)))))).Methods("POST")
 
 	//[Route("/Users/{Id}/Policy", "POST", Summary = "Updates a user policy")]
 	//[Authenticated(Roles = "admin")]
