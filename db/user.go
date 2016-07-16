@@ -80,5 +80,16 @@ func (d *DB) ChangeUserPassword(uid string, newPassword []byte) error {
 
 // UpdateUser updates the user profile stored in the database.
 func (d *DB) UpdateUser(uid string, user *gomediacenter.User) error {
-	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).UpdateId(bson.ObjectIdHex(uid), user)
+	var dbData gomediacenter.User
+	c := d.session.DB(DATABASE_NAME).C(USER_COLLECTION)
+	id := bson.ObjectIdHex(uid)
+	if err := c.FindId(id).One(&dbData); err != nil {
+		return err
+	}
+
+	// Ensure policy and configuration isn't changed.
+	user.Policy = dbData.Policy
+	user.Configuration = dbData.Configuration
+
+	return c.UpdateId(id, user)
 }
