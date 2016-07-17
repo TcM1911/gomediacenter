@@ -31,6 +31,7 @@ type ItemUserData interface {
 type UserManager interface {
 	AddNewUser(user *gomediacenter.User) error
 	UpdateUser(ID string, user *gomediacenter.User) error
+	UpdateUserPolicy(ID string, policy *gomediacenter.UserPolicy) error
 	GetUserByID(hexString string) (*gomediacenter.User, error)
 	GetUserByName(name string) (*gomediacenter.User, error)
 	GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, error)

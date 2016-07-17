@@ -93,3 +93,9 @@ func (d *DB) UpdateUser(uid string, user *gomediacenter.User) error {
 
 	return c.UpdateId(id, user)
 }
+
+// UpdateUserPolicy updates the user policy in the database.
+func (d *DB) UpdateUserPolicy(ID string, policy *gomediacenter.UserPolicy) error {
+	ch := bson.M{"$set": bson.M{"policy": policy}}
+	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).UpdateId(bson.ObjectIdHex(ID), ch)
+}

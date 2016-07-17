@@ -280,9 +280,35 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-//[Route("/Users/{Id}/Policy", "POST", Summary = "Updates a user policy")]
-//[Authenticated(Roles = "admin")]
-//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
+// UpdateUserPolicy updates a user policy. This action can only be performed by an admin.
+// The new policy is in the request body.
+func UpdateUserPolicy(w http.ResponseWriter, r *http.Request) {
+	var p *gomediacenter.UserPolicy
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		logError(w, err, "Error when decoding request body.", "Error when processing the request.", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	uid, err := getUIDFromPathVars(r)
+	if err != nil {
+		logError(w, err, "Error when getting uid.", "Error when processing the request.", http.StatusInternalServerError)
+		return
+	}
+
+	db, ok := GetContextVar(r, "db").(db.UserManager)
+	if !ok {
+		logError(w, nil, "Error when getting the db for the request.",
+			"Error when processing the request.", http.StatusInternalServerError)
+		return
+	}
+
+	if err = db.UpdateUserPolicy(uid, p); err != nil {
+		logError(w, err, "Error when updating user policy.", "Error when updating the user's policy.", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 //[Route("/Users/{Id}/Configuration", "POST", Summary = "Updates a user configuration")]
 //[Authenticated]
@@ -328,6 +354,14 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 /////////////
 // Private //
 /////////////
+
+func getUIDFromPathVars(r *http.Request) (string, error) {
+	vars, ok := GetContextVar(r, "pathVars").(map[string]string)
+	if !ok {
+		return "", errors.New("failed to type assert pathVars to a map[string]string")
+	}
+	return vars["uid"], nil
+}
 
 func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWriter, r *http.Request) {
 	if user.HasPasswd && (bcrypt.CompareHashAndPassword(user.Password, []byte(passwd)) != nil) {

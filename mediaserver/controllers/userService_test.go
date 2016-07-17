@@ -395,3 +395,28 @@ func TestUpdateUser(t *testing.T) {
 
 	assert.Equal(http.StatusOK, recorder.Code, "Incorrect status code.")
 }
+
+func TestUpdateUserPolicy(t *testing.T) {
+	assert := assert.New(t)
+	uid := "uid"
+	policy := &gomediacenter.UserPolicy{Admin: true}
+	body := &bytes.Buffer{}
+	_ = json.NewEncoder(body).Encode(policy)
+
+	r, _ := http.NewRequest(http.MethodPost, "/", body)
+	OpenContext(r)
+	defer CloseContext(r)
+
+	pathVars := make(map[string]string)
+	pathVars["uid"] = uid
+	SetContextVar(r, "pathVars", pathVars)
+
+	db := new(mockDB)
+	db.On("UpdateUserPolicy", uid, policy).Return(nil)
+	SetContextVar(r, "db", db)
+
+	recorder := httptest.NewRecorder()
+	UpdateUserPolicy(recorder, r)
+
+	assert.Equal(http.StatusOK, recorder.Code, "Incorrect status code")
+}
