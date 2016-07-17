@@ -11,9 +11,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func writeJsonBody(w http.ResponseWriter, v interface{}) {
+func writeJSONBody(w http.ResponseWriter, v interface{}) {
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Println("Error when writing the response to the message body", err)
+	}
 }
 
 func getFilteredUserList(filter map[string]interface{}, r *http.Request) ([]*gomediacenter.User, error) {
@@ -30,7 +32,7 @@ func getFilteredUserList(filter map[string]interface{}, r *http.Request) ([]*gom
 	return users, nil
 }
 
-func getIdFromPathVarAndCheckForErr(key string, pathVar map[string]string, w http.ResponseWriter) (string, bool) {
+func getIDFromPathVarAndCheckForErr(key string, pathVar map[string]string, w http.ResponseWriter) (string, bool) {
 	id := pathVar[key]
 
 	if !bson.IsObjectIdHex(id) {
@@ -40,7 +42,7 @@ func getIdFromPathVarAndCheckForErr(key string, pathVar map[string]string, w htt
 	return id, true
 }
 
-func checkAndWriteHTTPErrorForIdQueries(id string, err error, logMsg string, w http.ResponseWriter) bool {
+func checkAndWriteHTTPErrorForIDQueries(id string, err error, logMsg string, w http.ResponseWriter) bool {
 	if err == mgo.ErrNotFound {
 		http.Error(w, "no user with that id", http.StatusBadRequest)
 		return false

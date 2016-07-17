@@ -92,7 +92,7 @@ func saveSessionMap(sessions map[string]*gomediacenter.Session) {
 	for _, val := range sessions {
 		if val != nil {
 			a[i] = val
-			i += 1
+			i++
 		}
 	}
 

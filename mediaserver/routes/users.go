@@ -40,14 +40,14 @@ func newUsersRouter(router *mux.Router) {
 		middleware.WithPathVars(
 			middleware.AdminOrLoggedInUser(
 				middleware.WithDB(
-					controllers.GetUserById))))).Methods("GET")
+					controllers.GetUserByID))))).Methods("GET")
 
 	// GET to the route "/Users/{Id}/Offline" gets an offline user record by Id.
 	usersRouter.HandleFunc("/{uid}/Offline", middleware.WithContext(
 		middleware.WithPathVars(
 			middleware.AdminOrLoggedInUser(
 				middleware.WithDB(
-					controllers.GetOfflineUserById))))).Methods("GET")
+					controllers.GetOfflineUserByID))))).Methods("GET")
 
 	//A DELETE to /Users/{uid} deletes a user and all it's item data.
 	// This action requires admin rights.

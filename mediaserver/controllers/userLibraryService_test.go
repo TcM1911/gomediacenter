@@ -65,7 +65,7 @@ func TestUserItemHandler(t *testing.T) {
 	assert := assert.New(t)
 
 	database := new(mockDB)
-	database.On("FindItemById", "12345").Return(gomediacenter.MOVIE, movie, nil)
+	database.On("FindItemByID", "12345").Return(gomediacenter.MOVIE, movie, nil)
 	database.On("FindItemUserData", "userid", "12345").Return(userdata, nil)
 
 	// PathVars

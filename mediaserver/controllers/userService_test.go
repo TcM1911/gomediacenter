@@ -22,7 +22,7 @@ func TestNewUser(t *testing.T) {
 	db.On("AddNewUser", mock.Anything).Return(nil)
 
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(gomediacenter.NewUserRequest{Name: "testUser"})
+	_ = json.NewEncoder(b).Encode(gomediacenter.NewUserRequest{Name: "testUser"})
 
 	req, _ := http.NewRequest("POST", "/Users/New", b)
 
@@ -78,7 +78,7 @@ func TestNewUser(t *testing.T) {
 	assert.Contains(body, `"EnablePublicSharing":true`)
 }
 
-func TestGetUserById(t *testing.T) {
+func TestGetUserByID(t *testing.T) {
 	assert := assert.New(t)
 
 	// Create test user.
@@ -93,7 +93,7 @@ func TestGetUserById(t *testing.T) {
 
 	// Setup db mock.
 	db := new(mockDB)
-	db.On("GetUserById", uid.Hex()).Return(user, nil)
+	db.On("GetUserByID", uid.Hex()).Return(user, nil)
 	SetContextVar(r, "db", db)
 
 	// Setup pathVars
@@ -104,7 +104,7 @@ func TestGetUserById(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Call http handler.
-	GetUserById(recorder, r)
+	GetUserByID(recorder, r)
 
 	body, err := getBodyStringFromRecorder(recorder)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestParseAuthHeader(t *testing.T) {
 		Version:  "3.0.5912.0",
 		Device:   "Chrome 50.0.2661.50",
 		Client:   "Emby Web Client",
-		DeviceId: "cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c",
+		DeviceID: "cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c",
 	}
 	r, err := http.NewRequest("POST", "", nil)
 	if err != nil {
@@ -243,10 +243,10 @@ func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string
 	// Mock setup.
 	db := new(mockDB)
 	db.On("ChangeUserPassword", user.ID.Hex(), mock.Anything).Return(nil)
-	db.On("GetUserById", user.ID.Hex()).Return(user, nil)
+	db.On("GetUserByID", user.ID.Hex()).Return(user, nil)
 
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(gomediacenter.PasswordRequest{
+	_ = json.NewEncoder(b).Encode(gomediacenter.PasswordRequest{
 		New: newPass, Current: currentPass})
 
 	// Context setup.
@@ -329,7 +329,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 	user := &gomediacenter.User{ID: bson.NewObjectId()}
 
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(gomediacenter.LoginRequest{
+	_ = json.NewEncoder(b).Encode(gomediacenter.LoginRequest{
 		Name: bodyUserName, Password: loginPass})
 
 	// Context setup.
@@ -357,12 +357,12 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 
 	// Mock setup.
 	db := new(mockDB)
-	db.On("GetUserById", user.ID.Hex()).Return(user, nil)
+	db.On("GetUserByID", user.ID.Hex()).Return(user, nil)
 	db.On("GetUserByName", bodyUserName).Return(user, nil)
 	SetContextVar(r, "db", db)
 
 	if withHeader {
-		r.Header.Add(gomediacenter.SESSIION_AUTH_HEADER, AUTH_TEST_HEADER)
+		r.Header.Add(gomediacenter.SessionAuthHeader, authTestHeader)
 	}
 
 	return r, nil
@@ -376,7 +376,7 @@ func TestUpdateUser(t *testing.T) {
 	user.ID = uid
 
 	body := &bytes.Buffer{}
-	json.NewEncoder(body).Encode(user)
+	_ = json.NewEncoder(body).Encode(user)
 
 	r, _ := http.NewRequest(http.MethodPost, "/", body)
 	OpenContext(r)

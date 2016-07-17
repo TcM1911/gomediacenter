@@ -13,7 +13,7 @@ func (d *DB) AddNewUser(user *gomediacenter.User) error {
 }
 
 // GetUserById finds a user by it's id in the Users collection.
-func (d *DB) GetUserById(hexString string) (*gomediacenter.User, error) {
+func (d *DB) GetUserByID(hexString string) (*gomediacenter.User, error) {
 	q := d.session.DB(DATABASE_NAME).C(USER_COLLECTION).FindId(bson.ObjectIdHex(hexString))
 	var user gomediacenter.User
 	if err := q.One(&user); err != nil {

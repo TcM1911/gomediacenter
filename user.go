@@ -164,7 +164,7 @@ func sendAuthenticationRequest(body LoginRequest, url, header string) (*AuthUser
 	if err != nil {
 		return nil, 0, errors.New("error when creating login request: " + err.Error())
 	}
-	req.Header.Add(SESSIION_AUTH_HEADER, header)
+	req.Header.Add(SessionAuthHeader, header)
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	defer resp.Body.Close()
@@ -188,7 +188,7 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	req.Header.Add(SESSION_KEY_HEADER, token)
+	req.Header.Add(SessionKeyHeader, token)
 
 	resp, err := http.DefaultClient.Do(req)
 	defer resp.Body.Close()
@@ -345,6 +345,6 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 }
 
 func setHeader(r *http.Request, token string) {
-	r.Header.Add(SESSION_KEY_HEADER, token)
+	r.Header.Add(SessionKeyHeader, token)
 	r.Header.Add("Content-Type", "application/json")
 }

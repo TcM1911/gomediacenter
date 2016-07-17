@@ -21,7 +21,7 @@ import (
 /////////////
 
 type client struct {
-	Client, Device, DeviceId, Version string
+	Client, Device, DeviceID, Version string
 }
 
 ////////////
@@ -49,7 +49,7 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error when querying for all users:", err)
 		return
 	}
-	writeJsonBody(w, users)
+	writeJSONBody(w, users)
 }
 
 // GetAllUsersPublic gets a list of publicly visible users for display on a login screen.
@@ -69,46 +69,46 @@ func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
 		publicList = append(publicList,
 			&gomediacenter.PublicUserResponse{Name: user.Name, ID: user.ID})
 	}
-	writeJsonBody(w, publicList)
+	writeJSONBody(w, publicList)
 }
 
-// GetUserById gets a user by Id. Route: /Users/{uid}.
+// GetUserByID gets a user by Id. Route: /Users/{uid}.
 // Can only be accessed by the authenticated user or admin.
-func GetUserById(w http.ResponseWriter, r *http.Request) {
+func GetUserByID(w http.ResponseWriter, r *http.Request) {
 	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid, ok := getIdFromPathVarAndCheckForErr("uid", pathVars, w)
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", pathVars, w)
 	if !ok {
 		return
 	}
 
 	db := GetContextVar(r, "db").(db.UserManager)
 
-	user, err := db.GetUserById(uid)
-	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err,
+	user, err := db.GetUserByID(uid)
+	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err,
 		"Error while retrieving the user", w); !ok {
 		return
 	}
-	writeJsonBody(w, user)
+	writeJSONBody(w, user)
 }
 
-// GetOfflineUserById gets an offline user record by Id.
-func GetOfflineUserById(w http.ResponseWriter, r *http.Request) {
-	GetUserById(w, r)
+// GetOfflineUserByID gets an offline user record by Id.
+func GetOfflineUserByID(w http.ResponseWriter, r *http.Request) {
+	GetUserByID(w, r)
 }
 
-// A DELETE to /Users/{uid} deletes a user and all it's item data.
+// DeleteUser deletes a user and all it's item data when a DELETE request is sent to to /Users/{uid}.
 // This action requires admin rights.
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Serving removing user request")
 	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid, ok := getIdFromPathVarAndCheckForErr("uid", pathVars, w)
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", pathVars, w)
 	if !ok {
 		return
 	}
 
 	db := GetContextVar(r, "db").(db.UserManager)
 	err := db.DeleteUser(uid)
-	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err,
+	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err,
 		"Error when deleting", w); !ok {
 		return
 	}
@@ -116,7 +116,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// A POST to /Users/{uid}/Authenticate authenticates a user.
+// Authenticate authenticates a user when a POST is sent to /Users/{uid}/Authenticate.
 // The password is past in the body in the parameter password.
 func Authenticate(w http.ResponseWriter, r *http.Request) {
 	log.Println("Processing authentication request")
@@ -124,27 +124,34 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 	uid := pathVars["uid"]
 
 	db := GetContextVar(r, "db").(db.UserManager)
-	user, err := db.GetUserById(uid)
-	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err, "Error when getting user data", w); !ok {
+	user, err := db.GetUserByID(uid)
+	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err, "Error when getting user data", w); !ok {
 		return
 	}
 	var form gomediacenter.LoginRequest
-	json.NewDecoder(r.Body).Decode(&form)
-	r.Body.Close()
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+		logError(w, err, "Error when processing auth request body:",
+			"Error when processing the request", http.StatusBadRequest)
+		return
+	}
 	passwd := form.Password
 	authenticateUser(user, passwd, w, r)
 }
 
-// A POST to /Users/AuthenticateByName authenticates a user.
+// AuthenticateByName authenticates a user when a POST is sent to /Users/{uid}/AuthenticateByName.
 // Username and password is past in the body as the parameters Username and password.
 func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 	log.Println("Processing authentication request by name")
 
 	var form gomediacenter.LoginRequest
-	json.NewDecoder(r.Body).Decode(&form)
-	r.Body.Close()
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+		logError(w, err, "Error when processing auth request body:",
+			"Error when processing the request", http.StatusBadRequest)
+		return
+	}
 	username, passwd := form.Name, form.Password
-
 	if username == "" {
 		log.Println("Username was missing in the request.")
 		http.Error(w, "username can't be empty", http.StatusBadRequest)
@@ -165,7 +172,7 @@ func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	pathVars := GetContextVar(r, "pathVars").(map[string]string)
 	uid := pathVars["uid"]
-	key := r.Header.Get(gomediacenter.SESSION_KEY_HEADER)
+	key := r.Header.Get(gomediacenter.SessionKeyHeader)
 	if ok := auth.RemoveSession(uid, key); ok {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -173,7 +180,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-// A POST to /Users/{Id}/Password updates a user's password.
+// ChangeUserPassword handles a password change for a user.
 // New password and current password are past as body parameters
 // newPassword and currentPassword.
 func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
@@ -194,8 +201,8 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := GetContextVar(r, "db").(db.UserManager)
-	user, err := db.GetUserById(uid)
-	if ok := checkAndWriteHTTPErrorForIdQueries(uid, err, "Error when getting user data", w); !ok {
+	user, err := db.GetUserByID(uid)
+	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err, "Error when getting user data", w); !ok {
 		return
 	}
 
@@ -309,7 +316,7 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return the user in the response body. This is how Emby does it.
-	writeJsonBody(w, user)
+	writeJSONBody(w, user)
 }
 
 //[Route("/Users/ForgotPassword", "POST", Summary = "Initiates the forgot password process for a local user")]
@@ -341,7 +348,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 		UserId:        user.ID.Hex(),
 		UserName:      user.Name,
 		Admin:         user.Policy.Admin,
-		DeviceId:      client.DeviceId,
+		DeviceId:      client.DeviceID,
 		DeviceName:    client.Device,
 		Client:        client.Client,
 		ClientVersion: client.Version,
@@ -352,7 +359,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 	resp.Token = authToken.Hex()
 	resp.Session = session
 	resp.User = user
-	writeJsonBody(w, resp)
+	writeJSONBody(w, resp)
 }
 
 func parseAuthHeader(r *http.Request) (client, error) {
@@ -372,7 +379,7 @@ func parseAuthHeader(r *http.Request) (client, error) {
 		case "Device":
 			client.Device = val
 		case "DeviceId":
-			client.DeviceId = val
+			client.DeviceID = val
 		case "Version":
 			client.Version = val
 		case "MediaBrowser Client":
@@ -380,7 +387,7 @@ func parseAuthHeader(r *http.Request) (client, error) {
 		}
 	}
 
-	if client.Client == "" && client.Version == "" && client.DeviceId == "" && client.Device == "" {
+	if client.Client == "" && client.Version == "" && client.DeviceID == "" && client.Device == "" {
 		return client, errors.New("missing information in the header")
 	}
 

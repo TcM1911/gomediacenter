@@ -14,7 +14,7 @@ func AdminOrLoggedInUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pathVars := controllers.GetContextVar(r, "pathVars").(map[string]string)
 		uid := pathVars["uid"]
-		token := r.Header.Get(gomediacenter.SESSION_KEY_HEADER)
+		token := r.Header.Get(gomediacenter.SessionKeyHeader)
 		session := auth.GetSession(token)
 		if session == nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -32,7 +32,7 @@ func AdminOrLoggedInUser(next http.HandlerFunc) http.HandlerFunc {
 // Admin only calls the next function if the session is an admin session.
 func Admin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get(gomediacenter.SESSION_KEY_HEADER)
+		token := r.Header.Get(gomediacenter.SessionKeyHeader)
 		session := auth.GetSession(token)
 		if session == nil {
 			w.WriteHeader(http.StatusUnauthorized)

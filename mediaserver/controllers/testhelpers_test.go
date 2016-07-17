@@ -11,7 +11,7 @@ import (
 ///////////////
 // Constants //
 ///////////////
-const AUTH_TEST_HEADER = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
+const authTestHeader = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
 
 ///////////
 // Mocks //
@@ -22,13 +22,13 @@ type mockDB struct {
 	mock.Mock
 }
 
-func (m *mockDB) FindItemById(s string) (gomediacenter.MEDIATYPE, interface{}, error) {
+func (m *mockDB) FindItemByID(s string) (gomediacenter.MEDIATYPE, interface{}, error) {
 	args := m.Called(s)
 	return args.Get(0).(gomediacenter.MEDIATYPE), args.Get(1).(interface{}), args.Error(2)
 }
 
-func (m *mockDB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, error) {
-	args := m.Called(uid, itemId)
+func (m *mockDB) FindItemUserData(uid, itemID string) (*gomediacenter.ItemUserData, error) {
+	args := m.Called(uid, itemID)
 	return args.Get(0).(*gomediacenter.ItemUserData), args.Error(1)
 }
 
@@ -42,7 +42,7 @@ func (m *mockDB) AddNewUser(user *gomediacenter.User) error {
 	return args.Error(0)
 }
 
-func (m *mockDB) GetUserById(s string) (*gomediacenter.User, error) {
+func (m *mockDB) GetUserByID(s string) (*gomediacenter.User, error) {
 	args := m.Called(s)
 	return args.Get(0).(*gomediacenter.User), args.Error(1)
 }
