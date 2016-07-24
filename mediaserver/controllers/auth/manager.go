@@ -2,6 +2,7 @@ package auth
 
 import (
 	"log"
+	"time"
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/db"
@@ -50,6 +51,8 @@ func Run() chan struct{} {
 	loop:
 		for {
 			select {
+			case <-time.Tick(60 * time.Second):
+				saveSessionMap(sessions)
 			case req := <-sessionReq:
 				s, ok := sessions[req]
 				if ok {
