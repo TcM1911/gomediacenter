@@ -265,26 +265,16 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	return &user, nil
 }
 
-// UpdateUser sends an request to the api server to update the user profile.
+// UpdateUser sends a request to the api server to update the user profile.
 func UpdateUser(newUserStruct *User, uid, token, apiServer string) (int, error) {
-	b := &bytes.Buffer{}
-	if err := json.NewEncoder(b).Encode(newUserStruct); err != nil {
-		return 0, err
-	}
-
 	url := fmt.Sprintf("%s/Users/%s", apiServer, uid)
-	req, err := http.NewRequest(http.MethodPost, url, b)
-	if err != nil {
-		return 0, err
-	}
-	setHeader(req, token)
+	return postUpdateToServer(newUserStruct, url, token)
+}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode, nil
+// UpdateUserPolicy sends a request to the api server to update the user's policy.
+func UpdateUserPolicy(policy *UserPolicy, uid, token, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s/Policy", apiServer, uid)
+	return postUpdateToServer(policy, url, token)
 }
 
 // ChangePassword sends a password change request to the api backend.
@@ -342,6 +332,26 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+func postUpdateToServer(postStruct interface{}, url, token string) (int, error) {
+	b := &bytes.Buffer{}
+	if err := json.NewEncoder(b).Encode(postStruct); err != nil {
+		return 0, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, b)
+	if err != nil {
+		return 0, err
+	}
+	setHeader(req, token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
 }
 
 func setHeader(r *http.Request, token string) {

@@ -105,7 +105,13 @@ func newUsersRouter(router *mux.Router) {
 	//[Route("/Users/{Id}/Policy", "POST", Summary = "Updates a user policy")]
 	//[Authenticated(Roles = "admin")]
 	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/Policy", notYetImplemented).Methods("POST")
+	usersRouter.HandleFunc("/{uid}/Policy",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.VerifyIds([]string{"uid"},
+					middleware.Admin(
+						middleware.WithDB(
+							controllers.UpdateUserPolicy)))))).Methods("POST")
 
 	//[Route("/Users/{Id}/Configuration", "POST", Summary = "Updates a user configuration")]
 	//[Authenticated]

@@ -516,6 +516,41 @@ func TestUpdateUserProfile(t *testing.T) {
 	assert.True(ok, "Logout failed.")
 }
 
+func TestUpdateUserPolicy(t *testing.T) {
+	assert := assert.New(t)
+
+	uid := createNewUserInDB("User Policy", "password", false)
+	rsp := loginUser(uid, "password", serverURL, authTestHeader)
+	if rsp == nil {
+		assert.FailNow("Authentication failed")
+	}
+	user := rsp.User
+	token := rsp.Token
+	p := user.Policy
+	assert.False(p.Admin, "User should not be an admin.")
+
+	// Test that user can't change the policy.
+	p.Admin = true
+	c, err := gomediacenter.UpdateUserPolicy(p, uid, token, serverURL)
+	if err != nil {
+		assert.FailNow("User's policy request failed: " + err.Error())
+	}
+	assert.Equal(http.StatusUnauthorized, c, "User should not be allowed to change the policy")
+
+	// Admin can change the user's policy.
+	cp, err := gomediacenter.UpdateUserPolicy(p, uid, adminToken, serverURL)
+	if err != nil {
+		assert.FailNow("Admin's policy request failed: " + err.Error())
+	}
+	r, c, err := gomediacenter.GetUser(uid, adminToken, serverURL)
+	if err != nil {
+		assert.FailNow("Getting user profile failed: " + err.Error())
+	}
+	assert.Equal(http.StatusOK, cp, "Wrong status code returned.")
+	assert.Equal(http.StatusOK, c, "Wrong status code returned.")
+	assert.True(r.Policy.Admin, "User's should now be an admin.")
+}
+
 func TestMain(m *testing.M) {
 	log.Println("Starting docker container...")
 	c, err := dockertest.ConnectToMongoDB(15, 5*time.Second, func(url string) bool {
@@ -583,7 +618,7 @@ func setupDB() {
 
 func setupUser(u, pw string, admin bool) *gomediacenter.User {
 	user := gomediacenter.NewUser(u)
-	user.Policy.Admin = true
+	user.Policy.Admin = admin
 	password, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalln("Error when generating password for", u)
@@ -591,4 +626,23 @@ func setupUser(u, pw string, admin bool) *gomediacenter.User {
 	user.Password = password
 	user.HasPasswd = admin
 	return user
+}
+
+func createNewUserInDB(u, pw string, admin bool) string {
+	d := db.GetDB()
+	defer d.Close()
+
+	user := setupUser(u, pw, admin)
+	if err := d.AddNewUser(user); err != nil {
+		log.Fatalln("Error while adding normal user to the database:", err)
+	}
+	return user.ID.Hex()
+}
+
+func loginUser(uid, pw, url, header string) *gomediacenter.AuthUserResponse {
+	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(uid, pw, url, header)
+	if code != http.StatusOK || err != nil {
+		return nil
+	}
+	return resp
 }
