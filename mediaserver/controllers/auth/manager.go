@@ -30,7 +30,7 @@ func RemoveSession(uid, sessionKey string) bool {
 	log.Printf("Removing session %s for user: %s\n", sessionKey, uid)
 	sessionReq <- sessionKey
 	session := <-sessionRes
-	if session.UserId != uid {
+	if session == nil || session.UserId != uid {
 		return false
 	}
 	delSession <- session
