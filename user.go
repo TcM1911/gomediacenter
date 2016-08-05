@@ -1,8 +1,6 @@
 package gomediacenter
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -142,25 +140,20 @@ func NewItemUserData(id, uid string) *ItemUserData {
 
 // AuthenticateUserByNameReqest creates and sends a login request to the API.
 func AuthenticateUserByNameReqest(name, passwd, apiURL, authHeader string) (*AuthUserResponse, int, error) {
-	reqBody := LoginRequest{Name: name, Password: passwd}
+	reqBody := &LoginRequest{Name: name, Password: passwd}
 	url := apiURL + "/Users/AuthenticateByName"
 	return sendAuthenticationRequest(reqBody, url, authHeader)
 }
 
 // AuthenticateUserByIDReqest creates and sends a login request to the API.
 func AuthenticateUserByIDReqest(id, passwd, apiURL, authHeader string) (*AuthUserResponse, int, error) {
-	reqBody := LoginRequest{Name: "", Password: passwd}
-	url := apiURL + "/Users/" + id + "/Authenticate"
+	reqBody := &LoginRequest{Name: "", Password: passwd}
+	url := fmt.Sprintf("%s/Users/%s/Authenticate", apiURL, id)
 	return sendAuthenticationRequest(reqBody, url, authHeader)
 }
 
-func sendAuthenticationRequest(body LoginRequest, url, header string) (*AuthUserResponse, int, error) {
-	b := new(bytes.Buffer)
-	if err := json.NewEncoder(b).Encode(body); err != nil {
-		return nil, 0, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, url, b)
+func sendAuthenticationRequest(body *LoginRequest, url, header string) (*AuthUserResponse, int, error) {
+	req, err := CreateRequestWithBody(http.MethodPost, url, body)
 	if err != nil {
 		return nil, 0, errors.New("error when creating login request: " + err.Error())
 	}
@@ -173,13 +166,12 @@ func sendAuthenticationRequest(body LoginRequest, url, header string) (*AuthUser
 	}
 
 	var decoded AuthUserResponse
-	return &decoded, resp.StatusCode, json.NewDecoder(resp.Body).Decode(&decoded)
+	return &decoded, resp.StatusCode, DecodeBody(resp, &decoded)
 }
 
 // LogoutUserReq sends a logout request to the api server. It returns true if the request
 // was successful.
 func LogoutUserReq(uid, token, apiServer string) (bool, error) {
-
 	if uid == "" || token == "" || apiServer == "" {
 		return false, errors.New("arguments can't be empty")
 	}
@@ -188,7 +180,7 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	req.Header.Add(SessionKeyHeader, token)
+	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
 	defer resp.Body.Close()
@@ -225,7 +217,7 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 	}
 
 	var user User
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+	if err := DecodeBody(resp, &user); err != nil {
 		return &user, 0, err
 	}
 	return &user, code, err
@@ -237,12 +229,8 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 		return nil, errors.New("empty username")
 	}
 	url := apiServer + "/Users/New"
-	b := new(bytes.Buffer)
-	if err := json.NewEncoder(b).Encode(NewUserRequest{Name: name}); err != nil {
-		return nil, err
-	}
 
-	req, err := http.NewRequest(http.MethodPost, url, b)
+	req, err := CreateRequestWithBody(http.MethodPost, url, NewUserRequest{Name: name})
 	if err != nil {
 		return nil, err
 	}
@@ -259,10 +247,7 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	}
 
 	var user User
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return nil, err
-	}
-	return &user, nil
+	return &user, DecodeBody(resp, &user)
 }
 
 // UpdateUser sends a request to the api server to update the user profile.
@@ -279,24 +264,8 @@ func UpdateUserPolicy(policy *UserPolicy, uid, token, apiServer string) (int, er
 
 // ChangePassword sends a password change request to the api backend.
 func ChangePassword(current, new, token, uid, apiServer string) (int, error) {
-	b := &bytes.Buffer{}
-	if err := json.NewEncoder(b).Encode(PasswordRequest{New: new, Current: current}); err != nil {
-		return 0, err
-	}
-
 	url := fmt.Sprintf("%s/Users/%s/Password", apiServer, uid)
-	req, err := http.NewRequest(http.MethodPost, url, b)
-	if err != nil {
-		return 0, err
-	}
-	setHeader(req, token)
-
-	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
-	if err != nil {
-		return 0, err
-	}
-	return resp.StatusCode, nil
+	return postUpdateToServer(PasswordRequest{New: new, Current: current}, url, token)
 }
 
 // DeleteUser sends a delete user request to the api server.
@@ -327,20 +296,11 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 	}
 
 	var users []*User
-	err = json.NewDecoder(resp.Body).Decode(&users)
-	if err != nil {
-		return nil, err
-	}
-	return users, nil
+	return users, DecodeBody(resp, &users)
 }
 
 func postUpdateToServer(postStruct interface{}, url, token string) (int, error) {
-	b := &bytes.Buffer{}
-	if err := json.NewEncoder(b).Encode(postStruct); err != nil {
-		return 0, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, url, b)
+	req, err := CreateRequestWithBody(http.MethodPost, url, postStruct)
 	if err != nil {
 		return 0, err
 	}

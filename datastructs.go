@@ -1,6 +1,12 @@
 package gomediacenter
 
-import "gopkg.in/mgo.v2/bson"
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+
+	"gopkg.in/mgo.v2/bson"
+)
 
 type PublicUserResponse struct {
 	Name string        `json:"Name"`
@@ -25,4 +31,18 @@ type NewUserRequest struct {
 type PasswordRequest struct {
 	New     string `json:"newPassword"`
 	Current string `json:"currentPassword"`
+}
+
+// DecodeBody parses and decodes the response body to the interface.
+func DecodeBody(r *http.Response, v interface{}) error {
+	return json.NewDecoder(r.Body).Decode(&v)
+}
+
+// CreateRequestWithBody creates a new http request with the request body (v).
+func CreateRequestWithBody(method, url string, v interface{}) (*http.Request, error) {
+	b := new(bytes.Buffer)
+	if err := json.NewEncoder(b).Encode(v); err != nil {
+		return nil, err
+	}
+	return http.NewRequest(method, url, b)
 }
