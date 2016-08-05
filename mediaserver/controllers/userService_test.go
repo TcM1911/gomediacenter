@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
+	"github.com/tcm1911/gomediacenter/db"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -419,4 +420,32 @@ func TestUpdateUserPolicy(t *testing.T) {
 	UpdateUserPolicy(recorder, r)
 
 	assert.Equal(http.StatusOK, recorder.Code, "Incorrect status code")
+}
+
+func TestUpdateUserConfig(t *testing.T) {
+	assert := assert.New(t)
+	uid := "uid"
+	cfg := &gomediacenter.UserConfig{SubtitleMode: "test config"}
+	db := new(mockDB)
+	db.On("UpdateUserConfiguration", uid, cfg).Return(nil)
+
+	r := setupPostReqTest(uid, db, cfg)
+	defer CloseContext(r)
+
+	w := httptest.NewRecorder()
+	UpdateUserConfiguration(w, r)
+	assert.Equal(http.StatusOK, w.Code, "Incorrect status code")
+}
+
+func setupPostReqTest(uid string, db db.UserManager, v interface{}) *http.Request {
+	r, _ := gomediacenter.CreateRequestWithBody(http.MethodPost, "/", v)
+	OpenContext(r)
+
+	pathVars := make(map[string]string)
+	pathVars["uid"] = uid
+	SetContextVar(r, "pathVars", pathVars)
+
+	SetContextVar(r, "db", db)
+
+	return r
 }

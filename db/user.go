@@ -99,3 +99,9 @@ func (d *DB) UpdateUserPolicy(ID string, policy *gomediacenter.UserPolicy) error
 	ch := bson.M{"$set": bson.M{"policy": policy}}
 	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).UpdateId(bson.ObjectIdHex(ID), ch)
 }
+
+// UpdateUserConfiguration updates the user's configuration in the database.
+func (d *DB) UpdateUserConfiguration(ID string, cfg *gomediacenter.UserConfig) error {
+	ch := bson.M{"$set": bson.M{"configuration": cfg}}
+	return d.session.DB(DATABASE_NAME).C(USER_COLLECTION).UpdateId(bson.ObjectIdHex(ID), ch)
+}

@@ -284,22 +284,12 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 // The new policy is in the request body.
 func UpdateUserPolicy(w http.ResponseWriter, r *http.Request) {
 	var p *gomediacenter.UserPolicy
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		logError(w, err, "Error when decoding request body.", "Error when processing the request.", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	uid, err := getUIDFromPathVars(r)
+	uid, err := getUIDAndRequestBody(r, w, &p)
 	if err != nil {
-		logError(w, err, "Error when getting uid.", "Error when processing the request.", http.StatusInternalServerError)
 		return
 	}
-
-	db, ok := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
 	if !ok {
-		logError(w, nil, "Error when getting the db for the request.",
-			"Error when processing the request.", http.StatusInternalServerError)
 		return
 	}
 
@@ -313,6 +303,22 @@ func UpdateUserPolicy(w http.ResponseWriter, r *http.Request) {
 //[Route("/Users/{Id}/Configuration", "POST", Summary = "Updates a user configuration")]
 //[Authenticated]
 //[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
+func UpdateUserConfiguration(w http.ResponseWriter, r *http.Request) {
+	var c *gomediacenter.UserConfig
+	uid, err := getUIDAndRequestBody(r, w, &c)
+	if err != nil {
+		return
+	}
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
+	if err = db.UpdateUserConfiguration(uid, c); err != nil {
+		logError(w, err, "Error when updating user's configuration.",
+			"Error when updating user's configuration.", http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 // NewUser creates a user. The name of the user to be created is passed as the
 // parameter Name in the POST body.
@@ -426,4 +432,29 @@ func parseAuthHeader(r *http.Request) (client, error) {
 	}
 
 	return client, nil
+}
+
+func getUIDAndRequestBody(r *http.Request, w http.ResponseWriter, v interface{}) (string, error) {
+	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
+		logError(w, err, "Error when decoding request body.", "Error when processing the request.", http.StatusBadRequest)
+		return "", err
+	}
+	defer r.Body.Close()
+
+	uid, err := getUIDFromPathVars(r)
+	if err != nil {
+		logError(w, err, "Error when getting uid.", "Error when processing the request.", http.StatusInternalServerError)
+		return "", err
+	}
+	return uid, nil
+}
+
+func getUserManager(r *http.Request, w http.ResponseWriter) (db.UserManager, bool) {
+	db, ok := GetContextVar(r, "db").(db.UserManager)
+	if !ok {
+		logError(w, nil, "Error when getting the db for the request.",
+			"Error when processing the request.", http.StatusInternalServerError)
+		return nil, false
+	}
+	return db, true
 }

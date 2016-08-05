@@ -82,6 +82,11 @@ func (m *mockDB) UpdateUserPolicy(uid string, policy *gomediacenter.UserPolicy) 
 	return args.Error(0)
 }
 
+func (m *mockDB) UpdateUserConfiguration(uid string, conf *gomediacenter.UserConfig) error {
+	args := m.Called(uid, conf)
+	return args.Error(0)
+}
+
 //////////////////////
 // Helper functions //
 //////////////////////
