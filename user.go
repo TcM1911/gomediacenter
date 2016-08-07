@@ -3,7 +3,6 @@ package gomediacenter
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -161,7 +160,7 @@ func sendAuthenticationRequest(body *LoginRequest, url, header string) (*AuthUse
 	req.Header.Add(SessionAuthHeader, header)
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	if err != nil {
 		return nil, resp.StatusCode, err
 	}
@@ -185,7 +184,7 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	code := resp.StatusCode
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	if err != nil {
 		return false, err
 	}
@@ -208,7 +207,7 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	code := resp.StatusCode
 	if err != nil {
 		return nil, code, err
@@ -239,7 +238,7 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -264,6 +263,12 @@ func UpdateUserPolicy(policy *UserPolicy, uid, token, apiServer string) (int, er
 	return postUpdateToServer(policy, url, token)
 }
 
+// UpdateUserCfg sensds a request to the api server to update the user's configuration.
+func UpdateUserCfg(cfg *UserConfig, uid, token, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s/Configuration", apiServer, uid)
+	return postUpdateToServer(cfg, url, token)
+}
+
 // ChangePassword sends a password change request to the api backend.
 func ChangePassword(current, new, token, uid, apiServer string) (int, error) {
 	url := fmt.Sprintf("%s/Users/%s/Password", apiServer, uid)
@@ -279,7 +284,7 @@ func DeleteUser(uid, token, apiServer string) (int, error) {
 	}
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	return resp.StatusCode, err
 }
 
@@ -292,7 +297,7 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 	}
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -312,17 +317,11 @@ func postUpdateToServer(postStruct interface{}, url, token string) (int, error) 
 	if err != nil {
 		return 0, err
 	}
-	defer closeRespBody(resp)
+	defer CloseRespBody(resp)
 	return resp.StatusCode, nil
 }
 
 func setHeader(r *http.Request, token string) {
 	r.Header.Add(SessionKeyHeader, token)
 	r.Header.Add("Content-Type", "application/json")
-}
-
-func closeRespBody(r *http.Response) {
-	if err := r.Body.Close(); err != nil {
-		log.Printf("Error when closing the response body: %s", err.Error())
-	}
 }

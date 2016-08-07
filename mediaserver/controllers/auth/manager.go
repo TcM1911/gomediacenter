@@ -17,8 +17,10 @@ var sessions map[string]*gomediacenter.Session
 func AddSession(session *gomediacenter.Session) {
 	lock.Lock()
 	defer lock.Unlock()
+	if sessions == nil {
+		sessions = make(map[string]*gomediacenter.Session)
+	}
 	sessions[session.ID.Hex()] = session
-	go saveSessionMap(sessions)
 }
 
 // GetSession gets a session object from the manager.
@@ -43,12 +45,6 @@ func RemoveSession(uid, sessionKey string) bool {
 	lock.Lock()
 	defer lock.Unlock()
 	delete(sessions, session.ID.Hex())
-	go func(id string) {
-		db := db.GetDB()
-		if err := db.RemoveSession(id); err != nil {
-			log.Println("Error when removing the session from the db:", err)
-		}
-	}(session.ID.Hex())
 	return true
 }
 

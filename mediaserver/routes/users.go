@@ -112,10 +112,12 @@ func newUsersRouter(router *mux.Router) {
 						middleware.WithDB(
 							controllers.UpdateUserPolicy)))))).Methods("POST")
 
-	//[Route("/Users/{Id}/Configuration", "POST", Summary = "Updates a user configuration")]
-	//[Authenticated]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/Configuration", notYetImplemented).Methods("POST")
+	//A Post to /Users/{Id}/Configuration updates a users's configuration.
+	usersRouter.HandleFunc("/{uid}/Configuration", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.VerifyIds([]string{"uid"}, middleware.AdminOrLoggedInUser(
+				middleware.WithDB(
+					controllers.UpdateUserConfiguration)))))).Methods("POST")
 
 	//[Route("/Users/ForgotPassword", "POST", Summary = "Initiates the forgot password process for a local user")]
 	//[ApiMember(Name = "EnteredUsername", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]

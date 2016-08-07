@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+
 	"log"
 	"net/http"
 	"net/url"
@@ -129,7 +130,7 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var form gomediacenter.LoginRequest
-	defer r.Body.Close()
+	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
 		logError(w, err, "Error when processing auth request body:",
 			"Error when processing the request", http.StatusBadRequest)
@@ -145,7 +146,7 @@ func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 	log.Println("Processing authentication request by name")
 
 	var form gomediacenter.LoginRequest
-	defer r.Body.Close()
+	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
 		logError(w, err, "Error when processing auth request body:",
 			"Error when processing the request", http.StatusBadRequest)
@@ -189,7 +190,7 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	log.Println("Changing the password for", uid)
 
 	var req gomediacenter.PasswordRequest
-	defer r.Body.Close()
+	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "failed to decode the request", http.StatusBadRequest)
 		return
@@ -237,7 +238,7 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handle user update request.")
 	var newUserStruct *gomediacenter.User
-	defer r.Body.Close()
+	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&newUserStruct); err != nil {
 		logError(w, err,
 			"Error when decoding a user update request",
@@ -300,15 +301,15 @@ func UpdateUserPolicy(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-//[Route("/Users/{Id}/Configuration", "POST", Summary = "Updates a user configuration")]
-//[Authenticated]
-//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
+// UpdateUserConfiguration updates a user's configuration. This action can be performed by the user and admin.
+// The new configuration is in the request body.
 func UpdateUserConfiguration(w http.ResponseWriter, r *http.Request) {
 	var c *gomediacenter.UserConfig
 	uid, err := getUIDAndRequestBody(r, w, &c)
 	if err != nil {
 		return
 	}
+	log.Printf("Updating user %s's configuration.", uid)
 	db, ok := getUserManager(r, w)
 	if !ok {
 		return
@@ -324,12 +325,12 @@ func UpdateUserConfiguration(w http.ResponseWriter, r *http.Request) {
 // parameter Name in the POST body.
 func NewUser(w http.ResponseWriter, r *http.Request) {
 	var userReq gomediacenter.NewUserRequest
+	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&userReq); err != nil {
 		http.Error(w, "Failed to decode the request", http.StatusBadRequest)
 		log.Println("Error when decoding the request", err)
 		return
 	}
-	defer r.Body.Close()
 	name := userReq.Name
 
 	if name == "" {
@@ -393,7 +394,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 		Client:        client.Client,
 		ClientVersion: client.Version,
 	}
-	go auth.AddSession(session)
+	auth.AddSession(session)
 	log.Println(user.Name, "authenticated.")
 	resp := &gomediacenter.AuthUserResponse{}
 	resp.Token = authToken.Hex()
@@ -435,11 +436,11 @@ func parseAuthHeader(r *http.Request) (client, error) {
 }
 
 func getUIDAndRequestBody(r *http.Request, w http.ResponseWriter, v interface{}) (string, error) {
+	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
 		logError(w, err, "Error when decoding request body.", "Error when processing the request.", http.StatusBadRequest)
 		return "", err
 	}
-	defer r.Body.Close()
 
 	uid, err := getUIDFromPathVars(r)
 	if err != nil {
