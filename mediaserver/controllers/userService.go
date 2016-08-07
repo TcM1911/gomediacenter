@@ -44,7 +44,7 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	users, err := getFilteredUserList(filter, r)
+	users, err := getFilteredUserList(filter, r, w)
 	if err != nil {
 		http.Error(w, "error when getting all users", http.StatusInternalServerError)
 		log.Println("Error when querying for all users:", err)
@@ -58,7 +58,7 @@ func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
 	log.Println("Serving request for public viewing of all users.")
 	filter := make(map[string]interface{})
 	filter["IsHidden"] = false
-	users, err := getFilteredUserList(filter, r)
+	users, err := getFilteredUserList(filter, r, w)
 	if err != nil {
 		http.Error(w, "error when getting all users", http.StatusInternalServerError)
 		log.Println("Error when querying for all users:", err)
@@ -76,14 +76,15 @@ func GetAllUsersPublic(w http.ResponseWriter, r *http.Request) {
 // GetUserByID gets a user by Id. Route: /Users/{uid}.
 // Can only be accessed by the authenticated user or admin.
 func GetUserByID(w http.ResponseWriter, r *http.Request) {
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid, ok := getIDFromPathVarAndCheckForErr("uid", pathVars, w)
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
 	if !ok {
 		return
 	}
 
-	db := GetContextVar(r, "db").(db.UserManager)
-
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
 	user, err := db.GetUserByID(uid)
 	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err,
 		"Error while retrieving the user", w); !ok {
@@ -101,13 +102,15 @@ func GetOfflineUserByID(w http.ResponseWriter, r *http.Request) {
 // This action requires admin rights.
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Serving removing user request")
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid, ok := getIDFromPathVarAndCheckForErr("uid", pathVars, w)
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
 	if !ok {
 		return
 	}
 
-	db := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
 	err := db.DeleteUser(uid)
 	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err,
 		"Error when deleting", w); !ok {
@@ -121,10 +124,15 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 // The password is past in the body in the parameter password.
 func Authenticate(w http.ResponseWriter, r *http.Request) {
 	log.Println("Processing authentication request")
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid := pathVars["uid"]
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
+	if !ok {
+		return
+	}
 
-	db := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
 	user, err := db.GetUserByID(uid)
 	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err, "Error when getting user data", w); !ok {
 		return
@@ -159,7 +167,10 @@ func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
 	user, err := db.GetUserByName(username)
 	if err != nil {
 		http.Error(w, "", http.StatusInternalServerError)
@@ -171,8 +182,10 @@ func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 
 // LogoutUser logs out the user and removes the sessions from the session manager.
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid := pathVars["uid"]
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
+	if !ok {
+		return
+	}
 	key := r.Header.Get(gomediacenter.SessionKeyHeader)
 	if ok := auth.RemoveSession(uid, key); ok {
 		w.WriteHeader(http.StatusOK)
@@ -185,8 +198,10 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 // New password and current password are past as body parameters
 // newPassword and currentPassword.
 func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	uid := pathVars["uid"]
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
+	if !ok {
+		return
+	}
 	log.Println("Changing the password for", uid)
 
 	var req gomediacenter.PasswordRequest
@@ -201,7 +216,10 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
 	user, err := db.GetUserByID(uid)
 	if ok := checkAndWriteHTTPErrorForIDQueries(uid, err, "Error when getting user data", w); !ok {
 		return
@@ -252,26 +270,14 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, ok := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
 	if !ok {
-		logError(w, nil, "Error when getting the database from the context.",
-			"Error when processing the request.", http.StatusInternalServerError)
 		return
 	}
-
-	pathVars, ok := GetContextVar(r, "pathVars").(map[string]string)
+	uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
 	if !ok {
-		logError(w, nil, "Error when getting the pathvars from the context",
-			"Error when processing the request.", http.StatusBadRequest)
 		return
 	}
-	uid := pathVars["uid"]
-	if uid == "" {
-		logError(w, nil, "Error when getting the uid from the context",
-			"Error when processing the request.", http.StatusBadRequest)
-		return
-	}
-
 	log.Printf("User %s is being updated.\n", uid)
 	if err := db.UpdateUser(uid, newUserStruct); err != nil {
 		logError(w, err, "Error when processing the request",
@@ -341,7 +347,10 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Creating a new user named:", name)
 	user := gomediacenter.NewUser(name)
 
-	db := GetContextVar(r, "db").(db.UserManager)
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return
+	}
 	if err := db.AddNewUser(user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Println("Error when saving the new user to the database:", err)

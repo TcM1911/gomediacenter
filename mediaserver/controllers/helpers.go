@@ -2,11 +2,11 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -18,8 +18,11 @@ func writeJSONBody(w http.ResponseWriter, v interface{}) {
 	}
 }
 
-func getFilteredUserList(filter map[string]interface{}, r *http.Request) ([]*gomediacenter.User, error) {
-	db := GetContextVar(r, "db").(db.UserManager)
+func getFilteredUserList(filter map[string]interface{}, r *http.Request, w http.ResponseWriter) ([]*gomediacenter.User, error) {
+	db, ok := getUserManager(r, w)
+	if !ok {
+		return nil, errors.New("failed to type cast the database")
+	}
 	users, err := db.GetAllUsers(filter)
 	if err != nil {
 		return users, err
@@ -32,11 +35,15 @@ func getFilteredUserList(filter map[string]interface{}, r *http.Request) ([]*gom
 	return users, nil
 }
 
-func getIDFromPathVarAndCheckForErr(key string, pathVar map[string]string, w http.ResponseWriter) (string, bool) {
-	id := pathVar[key]
-
-	if !bson.IsObjectIdHex(id) {
-		http.Error(w, "not a valid id", http.StatusBadRequest)
+func getIDFromPathVarAndCheckForErr(key string, r *http.Request, w http.ResponseWriter) (string, bool) {
+	pathVars, ok := GetContextVar(r, "pathVars").(map[string]string)
+	if !ok {
+		log.Println("Failed to type set the pathVars")
+		return "", false
+	}
+	id, ok := pathVars[key]
+	if !ok || !bson.IsObjectIdHex(id) {
+		logError(w, nil, "In valid id", "not a valid id", http.StatusBadRequest)
 		return "", false
 	}
 	return id, true
