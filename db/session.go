@@ -8,7 +8,7 @@ import (
 // SaveSessions saves the sessions to the database.
 func (d *DB) SaveSessions(sessions []*gomediacenter.Session) error {
 	for _, session := range sessions {
-		_, err := d.session.DB(DATABASE_NAME).C(SESSIONS).UpsertId(session.Id, session)
+		_, err := d.session.DB(DATABASE_NAME).C(SESSIONS).UpsertId(session.ID, session)
 		if err != nil {
 			return err
 		}

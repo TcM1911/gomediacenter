@@ -75,7 +75,7 @@ func DownloadIMDBMetadata(movieName string, year int, fetcher IMDBMetadataDownlo
 		imdbData = *data
 	}
 	movie.Name = imdbData.Name
-	movie.ImdbId = imdbData.ID
+	movie.ImdbID = imdbData.ID
 	movie.Year = imdbData.Year
 	movie.Genre = imdbData.Genres
 	movie.Rating = imdbData.Rating
@@ -90,17 +90,17 @@ func parseCast(data *imdb.Title) []gomediacenter.Person {
 	var cast []gomediacenter.Person
 
 	for _, person := range data.Actors {
-		p := gomediacenter.Person{Name: person.FullName, Id: person.ID, Type: "Actor"}
+		p := gomediacenter.Person{Name: person.FullName, ID: person.ID, Type: "Actor"}
 		cast = append(cast, p)
 	}
 
 	for _, person := range data.Directors {
-		p := gomediacenter.Person{Name: person.FullName, Id: person.ID, Type: "Director", Role: "Director"}
+		p := gomediacenter.Person{Name: person.FullName, ID: person.ID, Type: "Director", Role: "Director"}
 		cast = append(cast, p)
 	}
 
 	for _, person := range data.Writers {
-		p := gomediacenter.Person{Name: person.FullName, Id: person.ID, Type: "Writer", Role: "Writer"}
+		p := gomediacenter.Person{Name: person.FullName, ID: person.ID, Type: "Writer", Role: "Writer"}
 		cast = append(cast, p)
 	}
 

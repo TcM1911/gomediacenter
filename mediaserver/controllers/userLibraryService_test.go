@@ -37,14 +37,14 @@ func init() {
 	video := gomediacenter.Video{}
 	video.MediaSources = []interface{}{videoSource}
 
-	actor := gomediacenter.Person{Id: "id", Name: "Actor name", Role: "Actor"}
+	actor := gomediacenter.Person{ID: "id", Name: "Actor name", Role: "Actor"}
 
 	movie = new(gomediacenter.Movie)
 	movie.Path = "/path/to/file.mkv"
 	movie.Name = "Test Movie Title"
-	movie.Id = id
+	movie.ID = id
 	movie.Video = video
-	movie.ImdbId = "imdbID"
+	movie.ImdbID = "imdbID"
 	movie.People = []gomediacenter.Person{actor}
 
 	// Create item user data

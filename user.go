@@ -3,6 +3,7 @@ package gomediacenter
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -160,7 +161,7 @@ func sendAuthenticationRequest(body *LoginRequest, url, header string) (*AuthUse
 	req.Header.Add(SessionAuthHeader, header)
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
+	defer closeRespBody(resp)
 	if err != nil {
 		return nil, resp.StatusCode, err
 	}
@@ -183,11 +184,12 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
+	code := resp.StatusCode
+	defer closeRespBody(resp)
 	if err != nil {
 		return false, err
 	}
-	if resp.StatusCode == http.StatusOK {
+	if code == http.StatusOK {
 		return true, nil
 	}
 	return false, fmt.Errorf("logout request failed with status code: %d", resp.StatusCode)
@@ -206,7 +208,7 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
+	defer closeRespBody(resp)
 	code := resp.StatusCode
 	if err != nil {
 		return nil, code, err
@@ -237,7 +239,7 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 	setHeader(req, token)
 
 	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
+	defer closeRespBody(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +279,7 @@ func DeleteUser(uid, token, apiServer string) (int, error) {
 	}
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
-	defer resp.Body.Close()
+	defer closeRespBody(resp)
 	return resp.StatusCode, err
 }
 
@@ -290,7 +292,7 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 	}
 	setHeader(r, token)
 	resp, err := http.DefaultClient.Do(r)
-	defer resp.Body.Close()
+	defer closeRespBody(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -310,11 +312,17 @@ func postUpdateToServer(postStruct interface{}, url, token string) (int, error) 
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer closeRespBody(resp)
 	return resp.StatusCode, nil
 }
 
 func setHeader(r *http.Request, token string) {
 	r.Header.Add(SessionKeyHeader, token)
 	r.Header.Add("Content-Type", "application/json")
+}
+
+func closeRespBody(r *http.Response) {
+	if err := r.Body.Close(); err != nil {
+		log.Printf("Error when closing the response body: %s", err.Error())
+	}
 }

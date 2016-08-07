@@ -15,7 +15,7 @@ import (
 // was successful.
 func InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
 	id := bson.NewObjectId()
-	movie.Id = id
+	movie.ID = id
 	session := GetDBSession()
 	defer session.Close()
 

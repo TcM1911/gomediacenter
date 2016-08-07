@@ -8,26 +8,32 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// PublicUserResponse is the struct returned when an unathorized user request a list
+// of all users.
 type PublicUserResponse struct {
 	Name string        `json:"Name"`
 	ID   bson.ObjectId `json:"id"`
 }
 
+// LoginRequest is the request struct for a login request.
 type LoginRequest struct {
 	Name     string `json:"Username"`
 	Password string `json:"password"`
 }
 
+// AuthUserResponse is the struct returned to the user when a login request has be processed.
 type AuthUserResponse struct {
 	Token   string   `json:"AccessToken"`
 	Session *Session `json:"SessionInfo"`
 	User    *User    `json:"User"`
 }
 
+// NewUserRequest is the request struct for creating a new user.
 type NewUserRequest struct {
 	Name string `json:"Name"`
 }
 
+// PasswordRequest is the request struct for changing a users's password.
 type PasswordRequest struct {
 	New     string `json:"newPassword"`
 	Current string `json:"currentPassword"`

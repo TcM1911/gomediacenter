@@ -384,11 +384,11 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 
 	authToken := bson.NewObjectId()
 	session := &gomediacenter.Session{
-		Id:            authToken,
-		UserId:        user.ID.Hex(),
+		ID:            authToken,
+		UserID:        user.ID.Hex(),
 		UserName:      user.Name,
 		Admin:         user.Policy.Admin,
-		DeviceId:      client.DeviceID,
+		DeviceID:      client.DeviceID,
 		DeviceName:    client.Device,
 		Client:        client.Client,
 		ClientVersion: client.Version,

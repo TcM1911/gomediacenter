@@ -171,11 +171,8 @@ func TestSettingAnUserPassword(t *testing.T) {
 	assert := assert.New(t)
 
 	user := &gomediacenter.User{ID: bson.NewObjectId(), Name: "User", HasPasswd: false}
-	r, err := passwordChangeContext(user, "", "password")
+	r := passwordChangeContext(user, "", "password")
 	defer CloseContext(r)
-	if err != nil {
-		assert.Fail(err.Error())
-	}
 
 	recorder := httptest.NewRecorder()
 
@@ -199,7 +196,7 @@ func TestChangeUserPassword(t *testing.T) {
 		HasPasswd: true,
 		Password:  currentHash,
 	}
-	r, err := passwordChangeContext(user, currentPass, "newPassword")
+	r := passwordChangeContext(user, currentPass, "newPassword")
 	defer CloseContext(r)
 	if err != nil {
 		assert.Fail(err.Error())
@@ -227,7 +224,7 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 		HasPasswd: true,
 		Password:  currentHash,
 	}
-	r, err := passwordChangeContext(user, "wrongPassword", "newPassword")
+	r := passwordChangeContext(user, "wrongPassword", "newPassword")
 	defer CloseContext(r)
 	if err != nil {
 		assert.Fail(err.Error())
@@ -240,29 +237,17 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 	assert.Equal(http.StatusBadRequest, recorder.Code)
 }
 
-func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) (*http.Request, error) {
+func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) *http.Request {
 	// Mock setup.
 	db := new(mockDB)
 	db.On("ChangeUserPassword", user.ID.Hex(), mock.Anything).Return(nil)
 	db.On("GetUserByID", user.ID.Hex()).Return(user, nil)
 
-	b := new(bytes.Buffer)
-	_ = json.NewEncoder(b).Encode(gomediacenter.PasswordRequest{
+	// Context setup.
+	r := setupPostReqTest(user.ID.Hex(), db, gomediacenter.PasswordRequest{
 		New: newPass, Current: currentPass})
 
-	// Context setup.
-	r, err := http.NewRequest("POST", "", b)
-	if err != nil {
-		return nil, err
-	}
-	OpenContext(r)
-
-	SetContextVar(r, "db", db)
-	pathVars := make(map[string]string)
-	pathVars["uid"] = user.ID.Hex()
-	SetContextVar(r, "pathVars", pathVars)
-
-	return r, nil
+	return r
 }
 
 func TestAuthenticateWithCorrectPassword(t *testing.T) {
@@ -375,21 +360,11 @@ func TestUpdateUser(t *testing.T) {
 	user := gomediacenter.NewUser("User Name")
 	uid := bson.NewObjectId()
 	user.ID = uid
-
-	body := &bytes.Buffer{}
-	_ = json.NewEncoder(body).Encode(user)
-
-	r, _ := http.NewRequest(http.MethodPost, "/", body)
-	OpenContext(r)
-	defer CloseContext(r)
-
-	pathVars := make(map[string]string)
-	pathVars["uid"] = user.ID.Hex()
-	SetContextVar(r, "pathVars", pathVars)
-
 	db := new(mockDB)
 	db.On("UpdateUser", uid.Hex(), user).Return(nil)
-	SetContextVar(r, "db", db)
+
+	r := setupPostReqTest(user.ID.Hex(), db, user)
+	defer CloseContext(r)
 
 	recorder := httptest.NewRecorder()
 	UpdateUser(recorder, r)
@@ -401,20 +376,11 @@ func TestUpdateUserPolicy(t *testing.T) {
 	assert := assert.New(t)
 	uid := "uid"
 	policy := &gomediacenter.UserPolicy{Admin: true}
-	body := &bytes.Buffer{}
-	_ = json.NewEncoder(body).Encode(policy)
-
-	r, _ := http.NewRequest(http.MethodPost, "/", body)
-	OpenContext(r)
-	defer CloseContext(r)
-
-	pathVars := make(map[string]string)
-	pathVars["uid"] = uid
-	SetContextVar(r, "pathVars", pathVars)
-
 	db := new(mockDB)
 	db.On("UpdateUserPolicy", uid, policy).Return(nil)
-	SetContextVar(r, "db", db)
+
+	r := setupPostReqTest(uid, db, policy)
+	defer CloseContext(r)
 
 	recorder := httptest.NewRecorder()
 	UpdateUserPolicy(recorder, r)

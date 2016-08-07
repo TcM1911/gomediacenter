@@ -21,7 +21,7 @@ func AdminOrLoggedInUser(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		if session.UserId == uid || session.Admin {
+		if session.UserID == uid || session.Admin {
 			next(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)

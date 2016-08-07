@@ -1,5 +1,6 @@
 package gomediacenter
 
+// Video is the struct used to hold video data.
 type Video struct {
 	Etage        string        `json:"Etage,omitempty"`
 	CanDelete    bool          `json:"CanDelete"`
@@ -12,11 +13,13 @@ type Video struct {
 	LockedData   bool          `json:"LockData"`
 }
 
+// Studio holds data of a production studio.
 type Studio struct {
 	Name string `json:"Name"`
-	Id   string `json:"Id"`
+	ID   string `json:"Id"`
 }
 
+// VideoSource holds information of the video source file.
 type VideoSource struct {
 	Protocol              string        `json:"Protocol"`
 	Type                  string        `json:"Type"`
@@ -33,11 +36,12 @@ type VideoSource struct {
 	MediaStreams          []interface{} `json:"MediaStreams"`
 	StreamFileNames       []string      `json:"PlayableStreamFileNames"`
 	Formats               []string      `json:"Formats"`
-	RequiredHttpHeaders   []interface{} `json:"RequiredHttpHeaders"`
+	RequiredHTTPHeaders   []interface{} `json:"RequiredHttpHeaders"`
 	DefaultAudioStream    int           `json:"DefaultAudioStreamIndex"`
 	Chapters              []Chapter     `json:"Chapters,array"`
 }
 
+// VideoStream holds information about the video stream in the file.
 type VideoStream struct {
 	Codec                  string  `json:"Codec"`
 	Lang                   string  `json:"Language"`
@@ -64,11 +68,13 @@ type VideoStream struct {
 	Cabac                  bool    `json:"IsCabac"`
 }
 
+// Chapter holds data of each chapter.
 type Chapter struct {
 	StartPos int64  `json:"StartPositionTicks"`
 	Name     string `json:"Name"`
 }
 
+// Intro holds data for intros to be played before a media is being played.
 type Intro struct {
 	Name string
 	Path string
