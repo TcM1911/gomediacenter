@@ -12,12 +12,15 @@ import (
 ///////////////
 // Constants //
 ///////////////
+
 const (
 	DATABASE_NAME             = "gomedia"
 	MEDIATYPE_COLLECTION      = "mediatypes"
 	MOVIE_COLLECTION          = "movies"
+	USER_COLLECTION           = "users"
 	ITEM_USER_DATA_COLLECTION = "itemuserdata"
 	LIBRARY_COLLECTION        = "library"
+	SESSIONS                  = "sessions"
 )
 
 /////////////
@@ -59,11 +62,12 @@ func Disconnect() {
 
 // Close closes the database connection.
 func (d *DB) Close() {
-	db.session.Close()
+	d.session.Close()
 }
 
 func GetDB() *DB {
-	return db
+	newSession := GetDBSession()
+	return &DB{session: newSession}
 }
 
 // GetDBSession returns a copy of the database session.
@@ -101,7 +105,11 @@ func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, 
 	err := q.One(&itemUserData)
 	if err == mgo.ErrNotFound {
 		// Return a new struct.
-		return gomediacenter.NewItemUserData(itemId, uid), nil
+		data := gomediacenter.NewItemUserData(itemId, uid)
+		if err := d.InsertItemUserData(data); err != nil {
+			return data, err
+		}
+		return data, nil
 	}
 	if err != nil {
 		return nil, err
@@ -109,16 +117,27 @@ func (d *DB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, 
 	return itemUserData, nil
 }
 
+// InsertItemUserData inserts a new record of user item data.
+func (d *DB) InsertItemUserData(userData *gomediacenter.ItemUserData) error {
+	err := d.session.DB(DATABASE_NAME).C(ITEM_USER_DATA_COLLECTION).Insert(userData)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // FindItemIntro returns intros for an item.
-func (d *DB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
+func (d *DB) FindItemIntro(id string) ([]*gomediacenter.Intro, error) {
 	// TODO: Add support for intros
-	var intros []gomediacenter.Intro
-	return &intros, mgo.ErrNotFound
+	var intros []*gomediacenter.Intro
+	return intros, mgo.ErrNotFound
 }
 
 // Inserts an item into the media type collection.
 func InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error {
 	session := GetDBSession()
+	defer session.Close()
+
 	dbMediaType := &mediaType{Id: id, Media: gomediaType}
 	err := session.DB(DATABASE_NAME).C(MEDIATYPE_COLLECTION).Insert(dbMediaType)
 	if err != nil {
@@ -127,9 +146,11 @@ func InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error
 	return nil
 }
 
-// Removes an item into the media type collection.
+// Removes an item in the media type collection.
 func RemoveItemType(id bson.ObjectId) error {
 	session := GetDBSession()
+	defer session.Close()
+
 	err := session.DB(DATABASE_NAME).C(MEDIATYPE_COLLECTION).RemoveId(id)
 	if err != nil {
 		return err

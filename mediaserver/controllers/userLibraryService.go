@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -20,7 +19,7 @@ type movieResponse struct {
 }
 
 type introResponse struct {
-	Intros *[]gomediacenter.Intro `json:"Items,array,omitempty"`
+	Intros []*gomediacenter.Intro `json:"Items,array,omitempty"`
 	Count  int                    `json:"TotalRecordCount"`
 }
 
@@ -45,7 +44,7 @@ func UserItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mediaType, media, err := database.FindItemById(id)
+	mediaType, media, err := database.FindItemByID(id)
 	if err == mgo.ErrNotFound {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -82,8 +81,7 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 
 	database := GetContextVar(r, "db").(db.IntroFinder)
 	if database == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("no database found"))
+		logError(w, nil, "no database found", "no database found", http.StatusInternalServerError)
 	}
 
 	res := new(introResponse)
@@ -92,16 +90,15 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 	if err == mgo.ErrNotFound {
 		res.Count = 0 // Ensure it's 0
 	} else if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println("Error getting intros from the database", err)
+		logError(w, err, "Error getting intros from the database",
+			"Error when processing the request", http.StatusInternalServerError)
 	} else {
-		size := len(*intros)
+		size := len(intros)
 		res.Count = size
 		res.Intros = intros
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(res)
+	writeJSONBody(w, res)
 }
 
 /////////////
@@ -110,8 +107,7 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 
 func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie, u *gomediacenter.ItemUserData) {
 	res := movieResponse{Movie: m, ItemUserData: u}
-	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	writeJSONBody(w, res)
 }
 
 //[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]

@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 ///////////
@@ -38,14 +37,14 @@ func init() {
 	video := gomediacenter.Video{}
 	video.MediaSources = []interface{}{videoSource}
 
-	actor := gomediacenter.Person{Id: "id", Name: "Actor name", Role: "Actor"}
+	actor := gomediacenter.Person{ID: "id", Name: "Actor name", Role: "Actor"}
 
 	movie = new(gomediacenter.Movie)
 	movie.Path = "/path/to/file.mkv"
 	movie.Name = "Test Movie Title"
-	movie.Id = id
+	movie.ID = id
 	movie.Video = video
-	movie.ImdbId = "imdbID"
+	movie.ImdbID = "imdbID"
 	movie.People = []gomediacenter.Person{actor}
 
 	// Create item user data
@@ -59,30 +58,6 @@ var movie *gomediacenter.Movie
 var userdata *gomediacenter.ItemUserData
 
 ///////////
-// Mocks //
-///////////
-
-// Setup db mock
-type mockDB struct {
-	mock.Mock
-}
-
-func (m *mockDB) FindItemById(s string) (gomediacenter.MEDIATYPE, interface{}, error) {
-	args := m.Called(s)
-	return args.Get(0).(gomediacenter.MEDIATYPE), args.Get(1).(interface{}), args.Error(2)
-}
-
-func (m *mockDB) FindItemUserData(uid, itemId string) (*gomediacenter.ItemUserData, error) {
-	args := m.Called(uid, itemId)
-	return args.Get(0).(*gomediacenter.ItemUserData), args.Error(1)
-}
-
-func (m *mockDB) FindItemIntro(id string) (*[]gomediacenter.Intro, error) {
-	args := m.Called(id)
-	return args.Get(0).(*[]gomediacenter.Intro), args.Error(1)
-}
-
-///////////
 // Tests //
 ///////////
 
@@ -90,7 +65,7 @@ func TestUserItemHandler(t *testing.T) {
 	assert := assert.New(t)
 
 	database := new(mockDB)
-	database.On("FindItemById", "12345").Return(gomediacenter.MOVIE, movie, nil)
+	database.On("FindItemByID", "12345").Return(gomediacenter.MOVIE, movie, nil)
 	database.On("FindItemUserData", "userid", "12345").Return(userdata, nil)
 
 	// PathVars
@@ -139,7 +114,7 @@ func TestUserItemIntrosHandlerNoEntry(t *testing.T) {
 	assert := assert.New(t)
 
 	database := new(mockDB)
-	var array *[]gomediacenter.Intro
+	var array []*gomediacenter.Intro
 	database.On("FindItemIntro", "12345").Return(array, mgo.ErrNotFound)
 
 	// PathVars

@@ -6,10 +6,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// Movie is the data struct for movie files.
 type Movie struct {
 	Name     string        `json:"Name" bson:"name"`
 	SortName string        `json:"SortName" bson:"sortName"`
-	Id       bson.ObjectId `json:"Id" bson:"_id"`
+	ID       bson.ObjectId `json:"Id" bson:"_id"`
 	Path     string        `json:"Path" bson:"path"`
 	Video
 	VideoSource
@@ -17,7 +18,7 @@ type Movie struct {
 	Awards       string    `json:"AwardSummary"`
 	MetaScore    int       `json:"Metascore"`
 	PremiereDate time.Time `json:"PremiereDate"`
-	ImdbId       string
+	ImdbID       string    `json:"ImdbId"`
 	MovieDB      string
 	Sync
 	People          []Person  `json:"People,array"`
@@ -37,10 +38,11 @@ type Movie struct {
 	Studios         []Studio  `json:"Studios"`
 	HD              bool      `json:"IsHD"`
 	AFolder         bool      `json:"IsFolder"`
-	ParentId        string    `json:"ParentId" bson:"parentId"`
+	ParentID        string    `json:"ParentId" bson:"parentId"`
 	Type            string    `json:"Type"`
 }
 
+// Trailer is the data struct for trailers with all its data.
 type Trailer struct {
 	URL  string `json:"Url"`
 	Name string `json:"Name"`

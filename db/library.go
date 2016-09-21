@@ -74,10 +74,10 @@ func PruneMissingItemsFromLibrary(items map[string]struct{}, libId string, libTy
 		for iterator.Next(&result) {
 			path := result.Path
 			if _, exist := items[path]; !exist {
-				if err := C.RemoveId(result.Id); err != nil {
+				if err := C.RemoveId(result.ID); err != nil {
 					return removedItems, err
 				}
-				if err := RemoveItemType(result.Id); err != nil {
+				if err := RemoveItemType(result.ID); err != nil {
 					return removedItems, err
 				}
 				removedItems = append(removedItems, path)

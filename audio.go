@@ -1,5 +1,7 @@
 package gomediacenter
 
+// AudioStream struct holds all the data for a audio stream. This stream is used in both video files
+// and audio files.
 type AudioStream struct {
 	Codec                  string `json:"Codec"`
 	Lang                   string `json:"Language"`

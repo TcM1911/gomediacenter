@@ -12,68 +12,112 @@ func newUsersRouter(router *mux.Router) {
 	*/
 	usersRouter := router.PathPrefix("/Users").Subrouter()
 
-	//[Route("/Users", "GET", Summary = "Gets a list of users")]
-	//[Authenticated]
-	//[ApiMember(Name = "IsHidden", Description = "Optional filter by IsHidden=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-	//[ApiMember(Name = "IsDisabled", Description = "Optional filter by IsDisabled=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-	//[ApiMember(Name = "IsGuest", Description = "Optional filter by IsGuest=true or false", IsRequired = false, DataType = "bool", ParameterType = "query", Verb = "GET")]
-	router.HandleFunc("/Users", notYetImplemented).Methods("GET")
+	// GET to the route "/Users" gets a list of users. This action required the user
+	// to be logged in. The list can be filtered by the query parameters: IsHidden,
+	// IsDisabled, and IsGuest.
+	router.HandleFunc("/Users", middleware.WithContext(
+		middleware.WithQueryVars(
+			middleware.Admin(
+				middleware.WithDB(
+					controllers.GetAllUsers))))).Methods("GET")
 
-	//[Route("/Users/Public", "GET", Summary = "Gets a list of publicly visible users for display on a login screen.")]
-	usersRouter.HandleFunc("/Public", notYetImplemented).Methods("GET")
+	// GET to the route"/Users/Public" gets a list of publicly visible users
+	// for display on a login screen.
+	usersRouter.HandleFunc("/Public", middleware.WithContext(
+		middleware.WithDB(
+			controllers.GetAllUsersPublic))).Methods("GET")
 
-	//[Route("/Users/{Id}", "GET", Summary = "Gets a user by Id")]
-	//[Authenticated(EscapeParentalControl = true)]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-	usersRouter.HandleFunc("/{id}", notYetImplemented).Methods("GET")
+	// POST to the route /Users/New creates a new user. This action requires
+	// admin status. The username is sent in the body with the parameter name of 'Name'.
+	usersRouter.HandleFunc("/New", middleware.WithContext(
+		middleware.Admin(
+			middleware.WithDB(
+				controllers.NewUser)))).Methods("POST")
 
-	//[Route("/Users/{Id}/Offline", "GET", Summary = "Gets an offline user record by Id")]
-	//[Authenticated]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-	usersRouter.HandleFunc("/{id}/Offline", notYetImplemented).Methods("GET")
+	// GET to the route /Users/{uid} returns the data about a user. This actions
+	// requires admin status or being login as the user.
+	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.AdminOrLoggedInUser(
+				middleware.WithDB(
+					controllers.GetUserByID))))).Methods("GET")
 
-	//[Route("/Users/{Id}", "DELETE", Summary = "Deletes a user")]
-	//[Authenticated(Roles = "Admin")]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "DELETE")]
-	usersRouter.HandleFunc("/{id}", notYetImplemented).Methods("DELETE")
+	// GET to the route "/Users/{Id}/Offline" gets an offline user record by Id.
+	usersRouter.HandleFunc("/{uid}/Offline", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.AdminOrLoggedInUser(
+				middleware.WithDB(
+					controllers.GetOfflineUserByID))))).Methods("GET")
 
-	//[Route("/Users/{Id}/Authenticate", "POST", Summary = "Authenticates a user")]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	//[ApiMember(Name = "Password", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/Authenticate", notYetImplemented).Methods("POST")
+	//A DELETE to /Users/{uid} deletes a user and all it's item data.
+	// This action requires admin rights.
+	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.Admin(
+				middleware.WithDB(
+					controllers.DeleteUser))))).Methods("DELETE")
 
-	//[Route("/Users/AuthenticateByName", "POST", Summary = "Authenticates a user")]
-	//[ApiMember(Name = "Username", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	//[ApiMember(Name = "Password", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	//[ApiMember(Name = "PasswordMd5", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	usersRouter.HandleFunc("/AuthenticateByName", notYetImplemented).Methods("POST")
+	// A POST to /Users/{uid}/Authenticate authenticates a user.
+	// The password is past in the body in the parameter password.
+	usersRouter.HandleFunc("/{uid}/Authenticate",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.VerifyIds([]string{"uid"},
+					middleware.WithDB(
+						controllers.Authenticate))))).Methods("POST")
 
-	//[Route("/Users/{Id}/Password", "POST", Summary = "Updates a user's password")]
-	//[Authenticated]
-	usersRouter.HandleFunc("/{id}/Password", notYetImplemented).Methods("POST")
+	// A POST to /Users/AuthenticateByName authenticates a user.
+	// Username and password is past in the body as the parameters Username and password.
+	usersRouter.HandleFunc("/AuthenticateByName", middleware.WithContext(
+		middleware.WithDB(
+			controllers.AuthenticateByName))).Methods("POST")
+
+	// A POST to /Users/{uid}/Logout logs the user out.
+	usersRouter.HandleFunc("/{uid}/Logout",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.VerifyIds([]string{"uid"},
+					controllers.LogoutUser)))).Methods("POST")
+
+	// A POST to /Users/{Id}/Password updates a user's password.
+	// New password and current password are past as body parameters
+	// newPassword and currentPassword.
+	usersRouter.HandleFunc("/{uid}/Password", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.VerifyIds([]string{"uid"},
+				middleware.AdminOrLoggedInUser(
+					middleware.WithQueryVars(
+						middleware.WithDB(
+							controllers.ChangeUserPassword))))))).Methods("POST")
 
 	//[Route("/Users/{Id}/EasyPassword", "POST", Summary = "Updates a user's easy password")]
 	//[Authenticated]
 	usersRouter.HandleFunc("/{id}/EasyPassword", notYetImplemented).Methods("POST")
 
-	//[Route("/Users/{Id}", "POST", Summary = "Updates a user")]
-	//[Authenticated]
-	usersRouter.HandleFunc("/{id}", notYetImplemented).Methods("POST")
+	// A POST to /Users/{uid} updates a user's profile.
+	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.VerifyIds([]string{"uid"},
+				middleware.AdminOrLoggedInUser(
+					middleware.WithDB(
+						controllers.UpdateUser)))))).Methods("POST")
 
-	//[Route("/Users/{Id}/Policy", "POST", Summary = "Updates a user policy")]
-	//[Authenticated(Roles = "admin")]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/Policy", notYetImplemented).Methods("POST")
+	// A Post to /Users/{Id}/Policy updates a users's policy. This request requires admin rights.
+	// The new policy is posted as the body.
+	usersRouter.HandleFunc("/{uid}/Policy",
+		middleware.WithContext(
+			middleware.WithPathVars(
+				middleware.VerifyIds([]string{"uid"},
+					middleware.Admin(
+						middleware.WithDB(
+							controllers.UpdateUserPolicy)))))).Methods("POST")
 
-	//[Route("/Users/{Id}/Configuration", "POST", Summary = "Updates a user configuration")]
-	//[Authenticated]
-	//[ApiMember(Name = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/Configuration", notYetImplemented).Methods("POST")
-
-	//[Route("/Users/New", "POST", Summary = "Creates a user")]
-	//[Authenticated(Roles = "Admin")]
-	//[ApiMember(Name = "Name", IsRequired = true, DataType = "string", ParameterType = "body", Verb = "POST")]
-	usersRouter.HandleFunc("/{id}/New", notYetImplemented).Methods("POST")
+	//A Post to /Users/{Id}/Configuration updates a users's configuration.
+	usersRouter.HandleFunc("/{uid}/Configuration", middleware.WithContext(
+		middleware.WithPathVars(
+			middleware.VerifyIds([]string{"uid"}, middleware.AdminOrLoggedInUser(
+				middleware.WithDB(
+					controllers.UpdateUserConfiguration)))))).Methods("POST")
 
 	//[Route("/Users/ForgotPassword", "POST", Summary = "Initiates the forgot password process for a local user")]
 	//[ApiMember(Name = "EnteredUsername", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]
@@ -146,8 +190,9 @@ func newUsersRouter(router *mux.Router) {
 	usersRouter.HandleFunc("/{uid}/Items/{id}",
 		middleware.WithContext(
 			middleware.WithPathVars(
-				middleware.WithDB(
-					controllers.UserItemHandler)))).Methods("GET")
+				middleware.AdminOrLoggedInUser(
+					middleware.WithDB(
+						controllers.UserItemHandler))))).Methods("GET")
 
 	//[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
 	//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]

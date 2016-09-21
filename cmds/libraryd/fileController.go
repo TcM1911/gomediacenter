@@ -65,7 +65,7 @@ func movieFileProcessor(job fileJob) {
 	// Add the results to a movie struct.
 	movie.Chapters = library.ConvertFFprobeChapter(ffprobeOutput.Chapters)
 	movie.MediaStreams = library.ConvertFFprobeStream(ffprobeOutput.Streams)
-	movie.ParentId = parentId.Hex()
+	movie.ParentID = parentId.Hex()
 	movie.Path = relativePath
 
 	// Add the new movie to the db.
