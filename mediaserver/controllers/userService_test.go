@@ -234,7 +234,7 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 
 	ChangeUserPassword(recorder, r)
 
-	assert.Equal(http.StatusBadRequest, recorder.Code)
+	assert.Equal(http.StatusUnauthorized, recorder.Code)
 }
 
 func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) *http.Request {

@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
-
 	"log"
 	"net/http"
 	"net/url"
@@ -162,8 +161,7 @@ func AuthenticateByName(w http.ResponseWriter, r *http.Request) {
 	}
 	username, passwd := form.Name, form.Password
 	if username == "" {
-		log.Println("Username was missing in the request.")
-		http.Error(w, "username can't be empty", http.StatusBadRequest)
+		logError(w, errors.New("empty username"), "Username was missing in the request.", "username can't be empty", http.StatusBadRequest)
 		return
 	}
 
@@ -207,12 +205,14 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	var req gomediacenter.PasswordRequest
 	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "failed to decode the request", http.StatusBadRequest)
+		logError(w, err, "Faild to decode the password request body:", "faild to decode request body",
+			http.StatusBadRequest)
 		return
 	}
 	newPass, currentPass := req.New, req.Current
 	if newPass == "" {
-		http.Error(w, "new password is required", http.StatusBadRequest)
+		logError(w, errors.New("no password given"), "Failed to handle password change request:",
+			"new password is required", http.StatusBadRequest)
 		return
 	}
 
@@ -228,21 +228,21 @@ func ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	if user.HasPasswd && (bcrypt.CompareHashAndPassword(
 		user.Password,
 		[]byte(currentPass)) != nil) {
-		http.Error(w, "incorrect current password", http.StatusBadRequest)
-		log.Printf("Verification of the current password for %s failed.\n", uid)
+		logError(w, errors.New("password don't match"), "Verification of the current password failed for"+uid+":",
+			"password and uid don't match", http.StatusUnauthorized)
 		return
 	}
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "failed to generate a new hash", http.StatusInternalServerError)
-		log.Println("Error when generating password hash:", err)
+		logError(w, err, "Error when generating password hash:", "failed to generate a new hash",
+			http.StatusInternalServerError)
 		return
 	}
 
 	if err := db.ChangeUserPassword(uid, passHash); err != nil {
-		http.Error(w, "Error when updating the password", http.StatusInternalServerError)
-		log.Printf("Error when updating password for %s, %s\n", uid, err)
+		logError(w, err, "Error when updating password for"+uid+":", "Error when updating the password",
+			http.StatusInternalServerError)
 		return
 	}
 	log.Printf("Password for %s has been updated.\n", uid)
@@ -259,8 +259,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&newUserStruct); err != nil {
 		logError(w, err,
-			"Error when decoding a user update request",
-			"Failed to decode user update request:", http.StatusBadRequest)
+			"Error when decoding a user update request:",
+			"Failed to decode user update request", http.StatusBadRequest)
 		return
 	}
 
@@ -280,7 +280,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("User %s is being updated.\n", uid)
 	if err := db.UpdateUser(uid, newUserStruct); err != nil {
-		logError(w, err, "Error when processing the request",
+		logError(w, err, "Error when processing the request:",
 			"Error processing the request", http.StatusInternalServerError)
 		return
 	}
@@ -333,14 +333,15 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 	var userReq gomediacenter.NewUserRequest
 	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&userReq); err != nil {
-		http.Error(w, "Failed to decode the request", http.StatusBadRequest)
-		log.Println("Error when decoding the request", err)
+		logError(w, err, "Error when decoding the request:", "Failed to process the request",
+			http.StatusBadRequest)
 		return
 	}
 	name := userReq.Name
 
 	if name == "" {
-		http.Error(w, "No username given", http.StatusBadRequest)
+		logError(w, errors.New("empty username"), "Failed process adding new user request:",
+			"No username given", http.StatusBadRequest)
 		return
 	}
 
@@ -352,8 +353,8 @@ func NewUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := db.AddNewUser(user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println("Error when saving the new user to the database:", err)
+		logError(w, err, "Error when saving the new user to the database:",
+			"Failing to processing the request.", http.StatusInternalServerError)
 		return
 	}
 
@@ -381,14 +382,13 @@ func getUIDFromPathVars(r *http.Request) (string, error) {
 
 func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWriter, r *http.Request) {
 	if user.HasPasswd && (bcrypt.CompareHashAndPassword(user.Password, []byte(passwd)) != nil) {
-		http.Error(w, "", http.StatusUnauthorized)
-		log.Println("Invalid login by", user.Name)
+		logError(w, errors.New("incorrect password"), "Authentication failed:",
+			"Username and password missmatch.", http.StatusUnauthorized)
 		return
 	}
 	client, err := parseAuthHeader(r)
 	if err != nil {
-		log.Println("Bad auth header.")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		logError(w, err, "Bad auth header:", "", http.StatusBadRequest)
 		return
 	}
 
@@ -419,6 +419,7 @@ func parseAuthHeader(r *http.Request) (client, error) {
 		return client, errors.New("missing x-emby-authorization header")
 	}
 
+	// TODO: Rewrite!
 	a := strings.Split(header, ",")
 	for _, v := range a {
 		keyVal := strings.Split(v, "=")
