@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
@@ -460,8 +459,8 @@ func getUIDAndRequestBody(r *http.Request, w http.ResponseWriter, v interface{})
 	return uid, nil
 }
 
-func getUserManager(r *http.Request, w http.ResponseWriter) (db.UserManager, bool) {
-	db, ok := GetContextVar(r, "db").(db.UserManager)
+func getUserManager(r *http.Request, w http.ResponseWriter) (gomediacenter.UserManager, bool) {
+	db, ok := GetContextVar(r, "db").(gomediacenter.UserManager)
 	if !ok {
 		logError(w, nil, "Error when getting the db for the request.",
 			"Error when processing the request.", http.StatusInternalServerError)

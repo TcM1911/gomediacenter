@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 )
 
@@ -38,7 +37,7 @@ func UserItemHandler(w http.ResponseWriter, r *http.Request) {
 	uid := pathVars["uid"]
 	id := pathVars["id"]
 
-	database := GetContextVar(r, "db").(db.ItemFinder)
+	database := GetContextVar(r, "db").(gomediacenter.ItemFinder)
 	if database == nil {
 		http.Error(w, "no database available", http.StatusInternalServerError)
 		return
@@ -79,7 +78,7 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 	//uid := pathVars["uid"]
 	id := pathVars["id"]
 
-	database := GetContextVar(r, "db").(db.IntroFinder)
+	database := GetContextVar(r, "db").(gomediacenter.IntroFinder)
 	if database == nil {
 		logError(w, nil, "no database found", "no database found", http.StatusInternalServerError)
 	}

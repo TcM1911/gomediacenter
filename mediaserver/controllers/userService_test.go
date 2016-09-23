@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -403,7 +402,7 @@ func TestUpdateUserConfig(t *testing.T) {
 	assert.Equal(http.StatusOK, w.Code, "Incorrect status code")
 }
 
-func setupPostReqTest(uid string, db db.UserManager, v interface{}) *http.Request {
+func setupPostReqTest(uid string, db gomediacenter.UserManager, v interface{}) *http.Request {
 	r, _ := gomediacenter.CreateRequestWithBody(http.MethodPost, "/", v)
 	OpenContext(r)
 
