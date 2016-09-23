@@ -2,11 +2,12 @@ package routes
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/mediaserver/controllers"
 	"github.com/tcm1911/gomediacenter/mediaserver/middleware"
 )
 
-func newUsersRouter(router *mux.Router) {
+func newUsersRouter(db *gomediacenter.UserManager, router *mux.Router) {
 	/*
 		/Users
 	*/
