@@ -13,9 +13,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 	"github.com/tcm1911/gomediacenter/mediaserver/routes"
+	"github.com/tcm1911/gomediacenter/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/ory-am/dockertest.v2"
@@ -24,12 +24,7 @@ import (
 const authTestHeader = `MediaBrowser Client="Emby Web Client", Device="Chrome 50.0.2661.50", DeviceId="cae2cc5be4e17f1d0a486d0c8fdb4789f4f1e99c", Version="3.0.5912.0", UserId="f40b2df070cf46e686bcbdd388d8706c"`
 
 var serverURL string
-
-func init() {
-	handler := routes.NewAPIRouter()
-	server := httptest.NewServer(handler)
-	serverURL = server.URL
-}
+var dbStruct *mongo.DB
 
 func TestGetPublicUserListing(t *testing.T) {
 	assert := assert.New(t)
@@ -299,30 +294,32 @@ func TestUpdateUserConfig(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
+	db := &mongo.DB{}
 	log.Println("Starting docker container...")
 	c, err := dockertest.ConnectToMongoDB(15, 5*time.Second, func(url string) bool {
 		log.Println("Connecting to the database...")
 		db.Connect(url)
-		session := db.GetDBSession()
 
 		log.Println("Starting API server")
-		handler := routes.NewAPIRouter()
+		handler := routes.NewAPIRouter(db, db)
 		server := httptest.NewServer(handler)
 		serverURL = server.URL
 
-		return session.Ping() == nil
+		return true
 	})
-	defer db.Disconnect()
+	defer db.Close()
 	if err != nil {
 		log.Fatalln("Error while starting up the container:", err)
 	}
 	log.Println("Connected to the database.")
 
+	dbStruct = db
+
 	// DB setup
-	setupDB()
+	setupDB(db)
 
 	// Start session manager
-	shutdown := auth.Run()
+	shutdown := auth.Run(db)
 
 	// Run tests
 	resutls := m.Run()
@@ -350,9 +347,7 @@ var adminID bson.ObjectId
 var adminToken string
 var userID bson.ObjectId
 
-func setupDB() {
-	db := db.GetDB()
-	defer db.Close()
+func setupDB(db *mongo.DB) {
 
 	// Admin user
 	adminUser := setupUser(adminName, adminPassword, true)
@@ -382,11 +377,8 @@ func setupUser(u, pw string, admin bool) *gomediacenter.User {
 }
 
 func createNewUserInDB(u, pw string, admin bool) string {
-	d := db.GetDB()
-	defer d.Close()
-
 	user := setupUser(u, pw, admin)
-	if err := d.AddNewUser(user); err != nil {
+	if err := dbStruct.AddNewUser(user); err != nil {
 		log.Fatalln("Error while adding normal user to the database:", err)
 	}
 	return user.ID.Hex()
