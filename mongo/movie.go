@@ -1,4 +1,4 @@
-package db
+package mongo
 
 import (
 	"log"
@@ -13,18 +13,18 @@ import (
 
 // InsertNewMovie adds a new movie to the database. The function returns true if the insertion
 // was successful.
-func InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
+func (d *DB) InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
 	id := bson.NewObjectId()
 	movie.ID = id
-	session := GetDBSession()
+	session := d.getDBSessionCopy()
 	defer session.Close()
 
-	err := session.DB(DATABASE_NAME).C(MOVIE_COLLECTION).Insert(movie)
+	err := getCollection(session, movieCollection).Insert(movie)
 	if err != nil {
 		return id, err
 	}
 
-	if err := InsertItemType(id, gomediacenter.MOVIE); err != nil {
+	if err := d.InsertItemType(id, gomediacenter.MOVIE); err != nil {
 		return id, err
 	}
 
@@ -33,12 +33,12 @@ func InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
 
 // IsMovieFileAlreadyKnown looks if the file is already in the database. If it is, the id is returned
 // as the second argument.
-func IsMovieFileAlreadyKnown(relativePath string, parentId bson.ObjectId) bool {
-	session := GetDBSession()
+func (d *DB) IsMovieFileAlreadyKnown(relativePath string, parentID bson.ObjectId) bool {
+	session := d.getDBSessionCopy()
 	defer session.Close()
 
-	search := bson.M{"path": relativePath, "parentId": parentId.Hex()}
-	n, err := session.DB(DATABASE_NAME).C(MOVIE_COLLECTION).Find(search).Count()
+	search := bson.M{"path": relativePath, "parentId": parentID.Hex()}
+	n, err := getCollection(session, movieCollection).Find(search).Count()
 	if err != nil {
 		// Log the error and treat like it's a new file.
 		log.Println("Error when trying to find", relativePath, "in the database:", err)
@@ -54,8 +54,8 @@ func IsMovieFileAlreadyKnown(relativePath string, parentId bson.ObjectId) bool {
 // Private //
 /////////////
 
-func findMovieById(d *DB, id string) (*gomediacenter.Movie, error) {
-	q := d.session.DB(DATABASE_NAME).C(MOVIE_COLLECTION).FindId(bson.ObjectIdHex(id))
+func findMovieByID(d *DB, id string) (*gomediacenter.Movie, error) {
+	q := d.session.DB(databaseName).C(movieCollection).FindId(bson.ObjectIdHex(id))
 	var movie *gomediacenter.Movie
 	if err := q.One(&movie); err != nil {
 		return movie, err

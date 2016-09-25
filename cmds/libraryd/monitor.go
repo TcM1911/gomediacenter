@@ -4,11 +4,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/tcm1911/gomediacenter/db"
+	"github.com/tcm1911/gomediacenter"
 	"gopkg.in/mgo.v2/bson"
 )
 
-func monitorFolder(libId bson.ObjectId, folder string, shutdownChannel chan struct{}) {
+func monitorFolder(db gomediacenter.LibraryMaintainer, libId bson.ObjectId, folder string, shutdownChannel chan struct{}) {
 	ticker := time.Tick(time.Duration(*interval) * time.Minute)
 monitorLoop:
 	for {
@@ -25,7 +25,7 @@ monitorLoop:
 					close(completeChan)
 					return
 				}
-				scanFolder(libId, folder, completeChan)
+				scanFolder(db, libId, folder, completeChan)
 			} else {
 				log.Println("Another scan is already active.")
 			}

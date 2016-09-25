@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 )
 
@@ -49,9 +48,9 @@ func RemoveSession(uid, sessionKey string) bool {
 }
 
 // Run starts the session manager.
-func Run() chan struct{} {
+func Run(db gomediacenter.SessionSaver) chan struct{} {
 	lock.Lock()
-	sessions = getSessionMapFromDB()
+	sessions = getSessionMapFromDB(db)
 	lock.Unlock()
 
 	exitChan := make(chan struct{})
@@ -61,9 +60,9 @@ func Run() chan struct{} {
 		for {
 			select {
 			case <-time.Tick(60 * time.Second):
-				saveSessionMap(sessions)
+				saveSessionMap(db, sessions)
 			case <-abort:
-				saveSessionMap(sessions)
+				saveSessionMap(db, sessions)
 				break loop
 			}
 		}
@@ -72,7 +71,7 @@ func Run() chan struct{} {
 	return exitChan
 }
 
-func saveSessionMap(sessions map[string]*gomediacenter.Session) {
+func saveSessionMap(db gomediacenter.SessionSaver, sessions map[string]*gomediacenter.Session) {
 	lock.RLock()
 	defer lock.RUnlock()
 	size := len(sessions)
@@ -89,15 +88,13 @@ func saveSessionMap(sessions map[string]*gomediacenter.Session) {
 		}
 	}
 
-	db := db.GetDB()
 	if err := db.SaveSessions(a); err != nil {
 		log.Println("Error while saving current sessions to db:", err)
 	}
 	log.Println(len(a), "sessions saved to the database.")
 }
 
-func getSessionMapFromDB() map[string]*gomediacenter.Session {
-	db := db.GetDB()
+func getSessionMapFromDB(db gomediacenter.SessionSaver) map[string]*gomediacenter.Session {
 	sessions, err := db.GetSavedSessions()
 	if err != nil {
 		if err != mgo.ErrNotFound {

@@ -64,7 +64,7 @@ var userdata *gomediacenter.ItemUserData
 func TestUserItemHandler(t *testing.T) {
 	assert := assert.New(t)
 
-	database := new(mockDB)
+	database := &mockDB{}
 	database.On("FindItemByID", "12345").Return(gomediacenter.MOVIE, movie, nil)
 	database.On("FindItemUserData", "userid", "12345").Return(userdata, nil)
 
@@ -78,11 +78,10 @@ func TestUserItemHandler(t *testing.T) {
 	// Add to context
 	OpenContext(request)
 	defer CloseContext(request)
-	SetContextVar(request, "db", database)
 	SetContextVar(request, "pathVars", vars)
 
 	recorder := httptest.NewRecorder()
-	UserItemHandler(recorder, request)
+	UserItemHandler(database).ServeHTTP(recorder, request)
 
 	assert.Equal(http.StatusOK, recorder.Code)
 

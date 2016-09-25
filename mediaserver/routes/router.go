@@ -14,7 +14,7 @@ func notYetImplemented(rw http.ResponseWriter, req *http.Request) {
 }
 
 // NewAPIRouter returns a new api router.
-func NewAPIRouter(userManager *gomediacenter.UserManager) *(mux.Router) {
+func NewAPIRouter(userManager gomediacenter.UserManager, itemFinder gomediacenter.ItemFinder) *(mux.Router) {
 	router := mux.NewRouter()
 
 	// /Albums router
@@ -141,7 +141,7 @@ func NewAPIRouter(userManager *gomediacenter.UserManager) *(mux.Router) {
 	newTrailersRouter(router)
 
 	// /Users
-	newUsersRouter(userManager, router)
+	newUsersRouter(userManager, itemFinder, router)
 
 	// /Videos
 	newVideosRouter(router)

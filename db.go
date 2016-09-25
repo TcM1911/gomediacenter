@@ -1,13 +1,19 @@
 package gomediacenter
 
+import (
+	"time"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 // Database is the interface for the database.
-/*type Database interface {
+type Database interface {
 	Connect(host string)
 	Close()
-	ItemFinder
-	ItemUserData
-	IntroFinder
-}*/
+	//	ItemFinder
+	//	ItemUserData
+	//	IntroFinder
+}
 
 // ItemFinder can find an item in the database.
 type ItemFinder interface {
@@ -42,4 +48,17 @@ type UserManager interface {
 type SessionSaver interface {
 	GetSavedSessions() ([]*Session, error)
 	SaveSessions([]*Session) error
+}
+
+type LibraryMaintainer interface {
+	NewLibrary(name string, libraryType MEDIATYPE) (*Library, error)
+	GetLibraryByID(id bson.ObjectId) (*Library, error)
+	UpdateLibraryLastScannedTime(id bson.ObjectId, time time.Time) error
+	PruneMissingItemsFromLibrary(items map[string]struct{}, libID string, libType MEDIATYPE) ([]string, error)
+	MovieMaintainer
+}
+
+type MovieMaintainer interface {
+	IsMovieFileAlreadyKnown(path string, parentID bson.ObjectId) bool
+	InsertNewMovie(movie *Movie) (bson.ObjectId, error)
 }

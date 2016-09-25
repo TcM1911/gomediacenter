@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/stretchr/graceful"
-	"github.com/tcm1911/gomediacenter/db"
 	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 	"github.com/tcm1911/gomediacenter/mediaserver/routes"
+	"github.com/tcm1911/gomediacenter/mongo"
 )
 
 func main() {
@@ -20,15 +20,16 @@ func main() {
 
 	// Connect to the database.
 	log.Println("Connecting to the database...")
+	db := &mongo.DB{}
 	db.Connect(*dbAdr)
 	log.Println("Connected to the database.")
-	defer db.Disconnect()
+	defer db.Close()
 
 	log.Println("Starting sessions manager...")
-	shutdownSession := auth.Run()
+	shutdownSession := auth.Run(db)
 
 	// API server.
-	mux := routes.NewAPIRouter()
+	mux := routes.NewAPIRouter(db, db)
 	log.Println("Serving API on", *addr)
 	graceful.Run(*addr, 3*time.Second, mux)
 

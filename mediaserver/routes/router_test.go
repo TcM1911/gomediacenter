@@ -304,6 +304,12 @@ func TestMain(m *testing.M) {
 		log.Println("Connecting to the database...")
 		db.Connect(url)
 		session := db.GetDBSession()
+
+		log.Println("Starting API server")
+		handler := routes.NewAPIRouter()
+		server := httptest.NewServer(handler)
+		serverURL = server.URL
+
 		return session.Ping() == nil
 	})
 	defer db.Disconnect()

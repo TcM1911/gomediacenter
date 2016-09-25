@@ -18,7 +18,7 @@ import (
 func TestNewUser(t *testing.T) {
 	assert := assert.New(t)
 
-	db := new(mockDB)
+	db := &mockDB{}
 	db.On("AddNewUser", mock.Anything).Return(nil)
 
 	b := new(bytes.Buffer)
@@ -91,7 +91,7 @@ func TestGetUserByID(t *testing.T) {
 	defer CloseContext(r)
 
 	// Setup db mock.
-	db := new(mockDB)
+	db := &mockDB{}
 	db.On("GetUserByID", uid.Hex()).Return(user, nil)
 
 	// Setup pathVars
