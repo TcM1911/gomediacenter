@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
@@ -18,11 +17,7 @@ func writeJSONBody(w http.ResponseWriter, v interface{}) {
 	}
 }
 
-func getFilteredUserList(filter map[string]interface{}, r *http.Request, w http.ResponseWriter) ([]*gomediacenter.User, error) {
-	db, ok := getUserManager(r, w)
-	if !ok {
-		return nil, errors.New("failed to type cast the database")
-	}
+func getFilteredUserList(filter map[string]interface{}, db gomediacenter.UserManager) ([]*gomediacenter.User, error) {
 	users, err := db.GetAllUsers(filter)
 	if err != nil {
 		return users, err

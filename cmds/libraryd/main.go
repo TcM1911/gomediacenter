@@ -11,7 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tcm1911/gomediacenter/db"
+	"github.com/tcm1911/gomediacenter"
+	"github.com/tcm1911/gomediacenter/mongo"
+
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -40,12 +42,13 @@ func main() {
 
 	// Connect to the database.
 	log.Println("Connecting to the database.")
+	db := &mongo.DB{}
 	db.Connect(*dbAdr)
-	defer db.Disconnect()
+	defer db.Close()
 
 	// Get the library information from the database.
 	idFile := filepath.Join(*mediaFolder, ".library_id")
-	libraryId := readLibrayIdFromFile(idFile)
+	libraryId := readLibrayIdFromFile(db, idFile)
 	log.Println("Monitoring library:", getCopyOfLibrary(libraryId).Name)
 
 	if *rescan == true {
@@ -57,14 +60,14 @@ func main() {
 				log.Println("[Error] Faild to update last scanned time", err)
 			}
 		}()
-		go scanFolder(libraryId, *mediaFolder, completeChan)
+		go scanFolder(db, libraryId, *mediaFolder, completeChan)
 		initialScan := &Scan{channel: completeChan, id: time.Now().UnixNano()}
 		AddScanToPoolAndWatch(initialScan)
 	}
 
 	// Start the monitor.
 	shutdownMonitor := make(chan struct{})
-	go monitorFolder(libraryId, *mediaFolder, shutdownMonitor)
+	go monitorFolder(db, libraryId, *mediaFolder, shutdownMonitor)
 
 	// Shutdown.
 	shutdownComplete := make(chan struct{}, 1)
@@ -92,7 +95,7 @@ func main() {
 	log.Println("Halted..")
 }
 
-func readLibrayIdFromFile(filePath string) bson.ObjectId {
+func readLibrayIdFromFile(db gomediacenter.LibraryMaintainer, filePath string) bson.ObjectId {
 	var id bson.ObjectId
 	file, err := os.Open(filePath)
 	defer file.Close()
@@ -102,7 +105,7 @@ func readLibrayIdFromFile(filePath string) bson.ObjectId {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		id = bson.ObjectIdHex(scanner.Text())
-		err := fetchLibraryDataFromDB(id)
+		err := fetchLibraryDataFromDB(db, id)
 		if err != nil {
 			log.Panic(err)
 		}

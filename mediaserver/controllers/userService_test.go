@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -19,7 +18,7 @@ import (
 func TestNewUser(t *testing.T) {
 	assert := assert.New(t)
 
-	db := new(mockDB)
+	db := &mockDB{}
 	db.On("AddNewUser", mock.Anything).Return(nil)
 
 	b := new(bytes.Buffer)
@@ -30,10 +29,9 @@ func TestNewUser(t *testing.T) {
 	// Add to context
 	OpenContext(req)
 	defer CloseContext(req)
-	SetContextVar(req, "db", db)
 
 	writer := httptest.NewRecorder()
-	NewUser(writer, req)
+	NewUser(db).ServeHTTP(writer, req)
 
 	body, err := getBodyStringFromRecorder(writer)
 	if err != nil {
@@ -93,9 +91,8 @@ func TestGetUserByID(t *testing.T) {
 	defer CloseContext(r)
 
 	// Setup db mock.
-	db := new(mockDB)
+	db := &mockDB{}
 	db.On("GetUserByID", uid.Hex()).Return(user, nil)
-	SetContextVar(r, "db", db)
 
 	// Setup pathVars
 	pathVars := make(map[string]string)
@@ -105,7 +102,7 @@ func TestGetUserByID(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Call http handler.
-	GetUserByID(recorder, r)
+	GetUserByID(db).ServeHTTP(recorder, r)
 
 	body, err := getBodyStringFromRecorder(recorder)
 	if err != nil {
@@ -127,15 +124,14 @@ func TestGetAllUsers(t *testing.T) {
 	OpenContext(r)
 	defer CloseContext(r)
 
-	db := new(mockDB)
+	db := &mockDB{}
 	db.On("GetAllUsers", mock.Anything).Return(users, nil)
-	SetContextVar(r, "db", db)
 
 	queryVars := url.Values{}
 	SetContextVar(r, "queryVars", queryVars)
 
 	recorder := httptest.NewRecorder()
-	GetAllUsers(recorder, r)
+	GetAllUsers(db).ServeHTTP(recorder, r)
 
 	body, err := getBodyStringFromRecorder(recorder)
 	if err != nil {
@@ -171,12 +167,12 @@ func TestSettingAnUserPassword(t *testing.T) {
 	assert := assert.New(t)
 
 	user := &gomediacenter.User{ID: bson.NewObjectId(), Name: "User", HasPasswd: false}
-	r := passwordChangeContext(user, "", "password")
+	r, db := passwordChangeContext(user, "", "password")
 	defer CloseContext(r)
 
 	recorder := httptest.NewRecorder()
 
-	ChangeUserPassword(recorder, r)
+	ChangeUserPassword(db).ServeHTTP(recorder, r)
 
 	assert.Equal(http.StatusOK, recorder.Code)
 }
@@ -196,7 +192,7 @@ func TestChangeUserPassword(t *testing.T) {
 		HasPasswd: true,
 		Password:  currentHash,
 	}
-	r := passwordChangeContext(user, currentPass, "newPassword")
+	r, db := passwordChangeContext(user, currentPass, "newPassword")
 	defer CloseContext(r)
 	if err != nil {
 		assert.Fail(err.Error())
@@ -204,7 +200,7 @@ func TestChangeUserPassword(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	ChangeUserPassword(recorder, r)
+	ChangeUserPassword(db).ServeHTTP(recorder, r)
 
 	assert.Equal(http.StatusOK, recorder.Code)
 }
@@ -224,7 +220,7 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 		HasPasswd: true,
 		Password:  currentHash,
 	}
-	r := passwordChangeContext(user, "wrongPassword", "newPassword")
+	r, db := passwordChangeContext(user, "wrongPassword", "newPassword")
 	defer CloseContext(r)
 	if err != nil {
 		assert.Fail(err.Error())
@@ -232,85 +228,85 @@ func TestChangeUserPasswordWhenPasswordDoesNotMatch(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	ChangeUserPassword(recorder, r)
+	ChangeUserPassword(db).ServeHTTP(recorder, r)
 
 	assert.Equal(http.StatusUnauthorized, recorder.Code)
 }
 
-func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) *http.Request {
+func passwordChangeContext(user *gomediacenter.User, currentPass, newPass string) (*http.Request, gomediacenter.UserManager) {
 	// Mock setup.
 	db := new(mockDB)
 	db.On("ChangeUserPassword", user.ID.Hex(), mock.Anything).Return(nil)
 	db.On("GetUserByID", user.ID.Hex()).Return(user, nil)
 
 	// Context setup.
-	r := setupPostReqTest(user.ID.Hex(), db, gomediacenter.PasswordRequest{
+	r := setupPostReqTest(user.ID.Hex(), gomediacenter.PasswordRequest{
 		New: newPass, Current: currentPass})
 
-	return r
+	return r, db
 }
 
 func TestAuthenticateWithCorrectPassword(t *testing.T) {
-	r, err := authenticateContextSetup("testpassword", "testpassword", "", true)
+	r, db, err := authenticateContextSetup("testpassword", "testpassword", "", true)
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
 	w := httptest.NewRecorder()
-	Authenticate(w, r)
+	Authenticate(db).ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthenticateWithIncorrectPassword(t *testing.T) {
-	r, err := authenticateContextSetup("testpassword", "incorrect", "", true)
+	r, db, err := authenticateContextSetup("testpassword", "incorrect", "", true)
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
 	w := httptest.NewRecorder()
-	Authenticate(w, r)
+	Authenticate(db).ServeHTTP(w, r)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestAuthenticateWithoutCorrectHeader(t *testing.T) {
-	r, err := authenticateContextSetup("testpassword", "testpassword", "", false)
+	r, db, err := authenticateContextSetup("testpassword", "testpassword", "", false)
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
 	w := httptest.NewRecorder()
-	Authenticate(w, r)
+	Authenticate(db).ServeHTTP(w, r)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestAuthenticateByNameWithCorrectPassword(t *testing.T) {
-	r, err := authenticateContextSetup("testpassword", "testpassword", "Username", true)
+	r, db, err := authenticateContextSetup("testpassword", "testpassword", "Username", true)
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
 	w := httptest.NewRecorder()
-	AuthenticateByName(w, r)
+	AuthenticateByName(db).ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthenticateByNameWithIncorrectPassword(t *testing.T) {
-	r, err := authenticateContextSetup("testpassword", "incorrect", "Username", true)
+	r, db, err := authenticateContextSetup("testpassword", "incorrect", "Username", true)
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
 	w := httptest.NewRecorder()
-	AuthenticateByName(w, r)
+	AuthenticateByName(db).ServeHTTP(w, r)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestAuthenticateByNameWithoutCorrectHeader(t *testing.T) {
-	r, err := authenticateContextSetup("testpassword", "testpassword", "Username", false)
+	r, db, err := authenticateContextSetup("testpassword", "testpassword", "Username", false)
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
 	w := httptest.NewRecorder()
-	AuthenticateByName(w, r)
+	AuthenticateByName(db).ServeHTTP(w, r)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHeader bool) (*http.Request, error) {
+func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHeader bool) (*http.Request, gomediacenter.UserManager, error) {
 
 	user := &gomediacenter.User{ID: bson.NewObjectId()}
 
@@ -321,7 +317,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 	// Context setup.
 	r, err := http.NewRequest("POST", "", b)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	OpenContext(r)
 
@@ -333,7 +329,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(userPass), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	user.Name = "Username"
@@ -351,7 +347,7 @@ func authenticateContextSetup(userPass, loginPass, bodyUserName string, withHead
 		r.Header.Add(gomediacenter.SessionAuthHeader, authTestHeader)
 	}
 
-	return r, nil
+	return r, db, nil
 }
 
 func TestUpdateUser(t *testing.T) {
@@ -363,11 +359,11 @@ func TestUpdateUser(t *testing.T) {
 	db := new(mockDB)
 	db.On("UpdateUser", uid.Hex(), user).Return(nil)
 
-	r := setupPostReqTest(user.ID.Hex(), db, user)
+	r := setupPostReqTest(user.ID.Hex(), user)
 	defer CloseContext(r)
 
 	recorder := httptest.NewRecorder()
-	UpdateUser(recorder, r)
+	UpdateUser(db).ServeHTTP(recorder, r)
 
 	assert.Equal(http.StatusOK, recorder.Code, "Incorrect status code.")
 }
@@ -379,11 +375,11 @@ func TestUpdateUserPolicy(t *testing.T) {
 	db := new(mockDB)
 	db.On("UpdateUserPolicy", uid, policy).Return(nil)
 
-	r := setupPostReqTest(uid, db, policy)
+	r := setupPostReqTest(uid, policy)
 	defer CloseContext(r)
 
 	recorder := httptest.NewRecorder()
-	UpdateUserPolicy(recorder, r)
+	UpdateUserPolicy(db).ServeHTTP(recorder, r)
 
 	assert.Equal(http.StatusOK, recorder.Code, "Incorrect status code")
 }
@@ -395,23 +391,21 @@ func TestUpdateUserConfig(t *testing.T) {
 	db := new(mockDB)
 	db.On("UpdateUserConfiguration", uid, cfg).Return(nil)
 
-	r := setupPostReqTest(uid, db, cfg)
+	r := setupPostReqTest(uid, cfg)
 	defer CloseContext(r)
 
 	w := httptest.NewRecorder()
-	UpdateUserConfiguration(w, r)
+	UpdateUserConfiguration(db).ServeHTTP(w, r)
 	assert.Equal(http.StatusOK, w.Code, "Incorrect status code")
 }
 
-func setupPostReqTest(uid string, db db.UserManager, v interface{}) *http.Request {
+func setupPostReqTest(uid string, v interface{}) *http.Request {
 	r, _ := gomediacenter.CreateRequestWithBody(http.MethodPost, "/", v)
 	OpenContext(r)
 
 	pathVars := make(map[string]string)
 	pathVars["uid"] = uid
 	SetContextVar(r, "pathVars", pathVars)
-
-	SetContextVar(r, "db", db)
 
 	return r
 }

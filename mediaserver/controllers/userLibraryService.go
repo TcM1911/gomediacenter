@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"gopkg.in/mgo.v2"
 )
 
@@ -29,46 +28,42 @@ type introResponse struct {
 
 // UserItemHandler gets an item from a user's library.
 // Path vars are uid and id.
-func UserItemHandler(w http.ResponseWriter, r *http.Request) {
+func UserItemHandler(db gomediacenter.ItemFinder) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("Handeling GET request for", r.URL)
+		log.Println("Handeling GET request for", r.URL)
 
-	pathVars := GetContextVar(r, "pathVars").(map[string]string)
-	// TODO: Add user restriction. Need to check if the user is allowed to view this item.
-	uid := pathVars["uid"]
-	id := pathVars["id"]
+		pathVars := GetContextVar(r, "pathVars").(map[string]string)
+		// TODO: Add user restriction. Need to check if the user is allowed to view this item.
+		uid := pathVars["uid"]
+		id := pathVars["id"]
 
-	database := GetContextVar(r, "db").(db.ItemFinder)
-	if database == nil {
-		http.Error(w, "no database available", http.StatusInternalServerError)
-		return
-	}
+		mediaType, media, err := db.FindItemByID(id)
+		if err == mgo.ErrNotFound {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	mediaType, media, err := database.FindItemByID(id)
-	if err == mgo.ErrNotFound {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		// Get the items user data.
+		itemUserData, err := db.FindItemUserData(uid, id)
+		if err != nil {
+			http.Error(w,
+				"Error while searching for user data, "+err.Error(),
+				http.StatusInternalServerError)
+		}
 
-	// Get the items user data.
-	itemUserData, err := database.FindItemUserData(uid, id)
-	if err != nil {
-		http.Error(w,
-			"Error while searching for user data, "+err.Error(),
-			http.StatusInternalServerError)
-	}
-
-	// Cast media to the right type so we can write the correct response.
-	if mediaType == gomediacenter.MOVIE && media != nil {
-		movie := media.(*gomediacenter.Movie)
-		writeMovieResponse(w, movie, itemUserData)
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		// Cast media to the right type so we can write the correct response.
+		if mediaType == gomediacenter.MOVIE && media != nil {
+			movie := media.(*gomediacenter.Movie)
+			writeMovieResponse(w, movie, itemUserData)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
 	}
 }
 
@@ -79,7 +74,7 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 	//uid := pathVars["uid"]
 	id := pathVars["id"]
 
-	database := GetContextVar(r, "db").(db.IntroFinder)
+	database := GetContextVar(r, "db").(gomediacenter.IntroFinder)
 	if database == nil {
 		logError(w, nil, "no database found", "no database found", http.StatusInternalServerError)
 	}

@@ -4,8 +4,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
+	"github.com/tcm1911/gomediacenter/mongo"
 )
 
 func main() {
@@ -17,6 +18,7 @@ func main() {
 		return
 	}
 
+	db := mongo.DB{}
 	db.Connect("localhost")
 
 	switch args[0] {
@@ -32,7 +34,7 @@ func main() {
 			panic(err)
 		}
 		fmt.Println(`Put the library id in a file called ".library_id" in the root folder of the library.`)
-		fmt.Println("Library id:", library.Id.Hex())
+		fmt.Println("Library id:", library.ID.Hex())
 	}
 
 }

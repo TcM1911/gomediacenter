@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/db"
 	"github.com/tcm1911/gomediacenter/library"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -17,13 +16,13 @@ import (
 type fileJob struct {
 	file      string
 	mediaType gomediacenter.MEDIATYPE
-	library   db.Library
+	library   gomediacenter.Library
 	libPath   string
 }
 
-func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
+func scanFolder(db gomediacenter.LibraryMaintainer, libId bson.ObjectId, folder string, complete chan<- struct{}) {
 	// Before we start the scan, let's make sure we have the newest config for this library.
-	err := fetchLibraryDataFromDB(libId)
+	err := fetchLibraryDataFromDB(db, libId)
 	if err != nil {
 		log.Println("Error when getting the latest library data.", err)
 	}
@@ -38,7 +37,7 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 	}
 	for i := 1; i <= *numWorkers; i++ {
 		workers.Add(1)
-		go scanWorker(&workers, jobChan)
+		go scanWorker(db, &workers, jobChan)
 	}
 
 	// Determine the folder type: Movies, TV shows, Music, etc.
@@ -86,12 +85,12 @@ func scanFolder(libId bson.ObjectId, folder string, complete chan<- struct{}) {
 	workers.Wait()
 	log.Println("Scanning for new items in", folder, "complete.")
 	// Prune dead items in the library.
-	purneLibrary(files, LIBRARY.Id.Hex(), LIBRARY.Type)
+	purneLibrary(db, files, LIBRARY.ID.Hex(), LIBRARY.Type)
 	log.Println("Library pruning complete.")
 	complete <- struct{}{}
 }
 
-func scanWorker(pool *sync.WaitGroup, jobs <-chan fileJob) {
+func scanWorker(db gomediacenter.MovieMaintainer, pool *sync.WaitGroup, jobs <-chan fileJob) {
 	if *verbose {
 		log.Println("Worker started.")
 	}
@@ -103,7 +102,7 @@ func scanWorker(pool *sync.WaitGroup, jobs <-chan fileJob) {
 		}
 		// Use the movieFileProcessor if we are processing files in a movie library.
 		if job.library.Type == gomediacenter.MOVIE {
-			movieFileProcessor(job)
+			movieFileProcessor(db, job)
 		} else {
 			processFile(job.file)
 		}
