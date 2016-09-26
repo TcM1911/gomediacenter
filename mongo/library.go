@@ -10,7 +10,7 @@ import (
 
 // NewLibrary creates a new library and returns a struct of it.
 func (d *DB) NewLibrary(name string, libraryType gomediacenter.MEDIATYPE) (*gomediacenter.Library, error) {
-	id := bson.NewObjectId()
+	id := gomediacenter.NewID()
 	library := &gomediacenter.Library{Name: name, ID: id, Type: libraryType}
 
 	session := d.getDBSessionCopy()
@@ -23,10 +23,10 @@ func (d *DB) NewLibrary(name string, libraryType gomediacenter.MEDIATYPE) (*gome
 }
 
 // GetLibraryByID returns the library by id.
-func (d *DB) GetLibraryByID(id bson.ObjectId) (*gomediacenter.Library, error) {
+func (d *DB) GetLibraryByID(id gomediacenter.ID) (*gomediacenter.Library, error) {
 	session := d.getDBSessionCopy()
 	defer session.Close()
-	q := getCollection(session, libraryCollection).FindId(id)
+	q := getCollection(session, libraryCollection).Find(bson.M{"id": id})
 	var lib gomediacenter.Library
 	if err := q.One(&lib); err != nil {
 		return &lib, err
@@ -35,11 +35,11 @@ func (d *DB) GetLibraryByID(id bson.ObjectId) (*gomediacenter.Library, error) {
 }
 
 // UpdateLibraryLastScannedTime updates the time the library was lasted scanned.
-func (d *DB) UpdateLibraryLastScannedTime(id bson.ObjectId, time time.Time) error {
+func (d *DB) UpdateLibraryLastScannedTime(id gomediacenter.ID, time time.Time) error {
 	session := d.getDBSessionCopy()
 	defer session.Close()
 
-	if err := getCollection(session, libraryCollection).UpdateId(id, bson.M{"$set": bson.M{"last_scanned": time}}); err != nil {
+	if err := getCollection(session, libraryCollection).Update(bson.M{"id": id}, bson.M{"$set": bson.M{"last_scanned": time}}); err != nil {
 		return err
 	}
 	return nil
@@ -47,7 +47,7 @@ func (d *DB) UpdateLibraryLastScannedTime(id bson.ObjectId, time time.Time) erro
 
 // PruneMissingItemsFromLibrary removes items not listed in the items map. The items map contains the relative path of the
 // files to keep. The function returns a slice of the items removed.
-func (d *DB) PruneMissingItemsFromLibrary(items map[string]struct{}, libID string, libType gomediacenter.MEDIATYPE) ([]string, error) {
+func (d *DB) PruneMissingItemsFromLibrary(items map[string]struct{}, libID gomediacenter.ID, libType gomediacenter.MEDIATYPE) ([]string, error) {
 	session := d.getDBSessionCopy()
 	defer session.Close()
 

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"gopkg.in/mgo.v2/bson"
 )
 
 /////////////
@@ -15,14 +13,14 @@ import (
 
 // User struct holds all the information about a user.
 type User struct {
-	Name                string        `json:"Name"`
-	ID                  bson.ObjectId `json:"id" bson:"_id"`
-	HasPasswd           bool          `json:"HasPassword" bson:"haspassword"`
-	HasConfiguredPasswd bool          `json:"HasConfiguredPassword"`
-	HasConfigEasyPasswd bool          `json:"HasConfiguredEasyPassword"`
-	Password            []byte        `json:"-" bson:"password"`
-	Configuration       *UserConfig   `json:"Configuration"`
-	Policy              *UserPolicy   `json:"Policy"`
+	Name                string      `json:"Name"`
+	ID                  ID          `json:"id" bson:"id"`
+	HasPasswd           bool        `json:"HasPassword" bson:"haspassword"`
+	HasConfiguredPasswd bool        `json:"HasConfiguredPassword"`
+	HasConfigEasyPasswd bool        `json:"HasConfiguredEasyPassword"`
+	Password            []byte      `json:"-" bson:"password"`
+	Configuration       *UserConfig `json:"Configuration"`
+	Policy              *UserPolicy `json:"Policy"`
 }
 
 // UserConfig holds the user's preferences. These can be changed by the user.
@@ -56,9 +54,9 @@ type UserPolicy struct {
 	BlockedTags          []interface{} `json:"BlockedTags,array"`
 	UserPreferenceAccess bool          `json:"EnableUserPreferenceAccess"`
 	//"AccessSchedules":[],
-	BlockedUnratedItems     []bson.ObjectId `json:"BlockUnratedItems,array"`
-	RemoteControlOtherUsers bool            `json:"EnableRemoteControlOfOtherUsers"`
-	SharedDeviceControl     bool            `json:"EnableSharedDeviceControl"`
+	BlockedUnratedItems     []ID `json:"BlockUnratedItems,array"`
+	RemoteControlOtherUsers bool `json:"EnableRemoteControlOfOtherUsers"`
+	SharedDeviceControl     bool `json:"EnableSharedDeviceControl"`
 	//"EnableLiveTvManagement":true,
 	//"EnableLiveTvAccess":true,
 	MediaPlayback            bool `json:"EnableMediaPlayback"`
@@ -81,8 +79,8 @@ type UserPolicy struct {
 // ItemUserData holds data for an item with regards to a user. For example:
 // how many times the item has been played, if it's a favorite.
 type ItemUserData struct {
-	ID               string    `json:"-" bson:"id"`
-	UID              string    `json:"-" bson:"uid"`
+	ID               ID        `json:"-" bson:"id"`
+	UID              ID        `json:"-" bson:"uid"`
 	PlayedPercentage float32   `json:"PlayedPercentage" bson:"percent"`
 	PlaybackPosTicks int       `json:"PlaybackPositionTicks" bson:"pos"`
 	PlayCount        int       `json:"PlayCount" bson:"count"`
@@ -121,7 +119,7 @@ func NewUser(name string) *User {
 		PublicSharing:            true,
 	}
 
-	id := bson.NewObjectId()
+	id := NewID()
 	return &User{
 		Name:          name,
 		ID:            id,
@@ -131,7 +129,7 @@ func NewUser(name string) *User {
 }
 
 // NewItemUserData returns a default ItemUserData.
-func NewItemUserData(id, uid string) *ItemUserData {
+func NewItemUserData(id, uid ID) *ItemUserData {
 	itemUserData := new(ItemUserData)
 	itemUserData.ID = id
 	itemUserData.UID = uid

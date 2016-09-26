@@ -13,8 +13,8 @@ func (d *DB) AddNewUser(user *gomediacenter.User) error {
 }
 
 // GetUserByID finds a user by it's id in the Users collection.
-func (d *DB) GetUserByID(hexString string) (*gomediacenter.User, error) {
-	q := d.session.DB(databaseName).C(userCollection).FindId(bson.ObjectIdHex(hexString))
+func (d *DB) GetUserByID(id gomediacenter.ID) (*gomediacenter.User, error) {
+	q := d.session.DB(databaseName).C(userCollection).Find(bson.M{"id": id})
 	var user gomediacenter.User
 	if err := q.One(&user); err != nil {
 		return nil, err
@@ -58,32 +58,31 @@ func (d *DB) GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.User, 
 }
 
 // DeleteUser removes a user and user data from the database.
-func (d *DB) DeleteUser(hexString string) error {
+func (d *DB) DeleteUser(id gomediacenter.ID) error {
 	// Remove all user item data.
 	info, err := d.session.DB(databaseName).C(itemUserDataCollection).RemoveAll(
-		bson.M{"uid": hexString})
+		bson.M{"uid": id})
 	if err != nil {
 		log.Println("Error when deleting user data:", err)
 	}
 	log.Println("Number of user data entries removed:", info.Removed)
-	log.Println("Removing user", hexString)
-	return d.session.DB(databaseName).C(userCollection).RemoveId(bson.ObjectIdHex(hexString))
+	log.Println("Removing user", id.String())
+	return d.session.DB(databaseName).C(userCollection).Remove(bson.M{"id": id})
 }
 
 // ChangeUserPassword changes the user's password.
-func (d *DB) ChangeUserPassword(uid string, newPassword []byte) error {
+func (d *DB) ChangeUserPassword(uid gomediacenter.ID, newPassword []byte) error {
 	change := bson.M{"$set": bson.M{"password": newPassword, "haspassword": true}}
-	return d.session.DB(databaseName).C(userCollection).UpdateId(
-		bson.ObjectIdHex(uid),
+	return d.session.DB(databaseName).C(userCollection).Update(
+		bson.M{"id": uid},
 		change)
 }
 
 // UpdateUser updates the user profile stored in the database.
-func (d *DB) UpdateUser(uid string, user *gomediacenter.User) error {
+func (d *DB) UpdateUser(uid gomediacenter.ID, user *gomediacenter.User) error {
 	var dbData gomediacenter.User
 	c := d.session.DB(databaseName).C(userCollection)
-	id := bson.ObjectIdHex(uid)
-	if err := c.FindId(id).One(&dbData); err != nil {
+	if err := c.Find(bson.M{"id": uid}).One(&dbData); err != nil {
 		return err
 	}
 
@@ -91,17 +90,17 @@ func (d *DB) UpdateUser(uid string, user *gomediacenter.User) error {
 	user.Policy = dbData.Policy
 	user.Configuration = dbData.Configuration
 
-	return c.UpdateId(id, user)
+	return c.Update(bson.M{"id": uid}, user)
 }
 
 // UpdateUserPolicy updates the user policy in the database.
-func (d *DB) UpdateUserPolicy(ID string, policy *gomediacenter.UserPolicy) error {
+func (d *DB) UpdateUserPolicy(id gomediacenter.ID, policy *gomediacenter.UserPolicy) error {
 	ch := bson.M{"$set": bson.M{"policy": policy}}
-	return d.session.DB(databaseName).C(userCollection).UpdateId(bson.ObjectIdHex(ID), ch)
+	return d.session.DB(databaseName).C(userCollection).Update(bson.M{"id": id}, ch)
 }
 
 // UpdateUserConfiguration updates the user's configuration in the database.
-func (d *DB) UpdateUserConfiguration(ID string, cfg *gomediacenter.UserConfig) error {
+func (d *DB) UpdateUserConfiguration(id gomediacenter.ID, cfg *gomediacenter.UserConfig) error {
 	ch := bson.M{"$set": bson.M{"configuration": cfg}}
-	return d.session.DB(databaseName).C(userCollection).UpdateId(bson.ObjectIdHex(ID), ch)
+	return d.session.DB(databaseName).C(userCollection).Update(bson.M{"id": id}, ch)
 }

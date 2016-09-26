@@ -46,7 +46,7 @@ func IDFromString(s string) (ID, error) {
 		return ID{}, errors.New("the id string must be 32 characters long")
 	}
 	buf := make([]byte, 16)
-	err := hex.Decode(buf, []byte(s))
+	_, err := hex.Decode(buf, []byte(s))
 	if err != nil {
 		return ID{}, err
 	}

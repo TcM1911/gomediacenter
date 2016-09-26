@@ -8,7 +8,7 @@ import (
 // SaveSessions saves the sessions to the database.
 func (d *DB) SaveSessions(sessions []*gomediacenter.Session) error {
 	for _, session := range sessions {
-		_, err := d.session.DB(databaseName).C(sessionsCollection).UpsertId(session.ID, session)
+		_, err := d.session.DB(databaseName).C(sessionsCollection).Upsert(bson.M{"id": session.ID}, session)
 		if err != nil {
 			return err
 		}
@@ -27,5 +27,5 @@ func (d *DB) GetSavedSessions() ([]*gomediacenter.Session, error) {
 
 // RemoveSession removes a session from the database.
 func (d *DB) RemoveSession(id string) error {
-	return d.session.DB(databaseName).C(sessionsCollection).RemoveId(bson.ObjectIdHex(id))
+	return d.session.DB(databaseName).C(sessionsCollection).Remove(bson.M{"id": id})
 }
