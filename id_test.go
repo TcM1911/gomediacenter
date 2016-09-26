@@ -10,13 +10,13 @@ import (
 func TestNewID(t *testing.T) {
 	id := NewID()
 	expected := ID{}
-	assert.IsType(t, expected.uuid, id.uuid)
+	assert.IsType(t, expected, id)
 }
 
 func TestNewRandomID(t *testing.T) {
 	id := NewRandomID()
 	expected := ID{}
-	assert.IsType(t, expected.uuid, id.uuid)
+	assert.IsType(t, expected, id)
 }
 
 func TestIDStringer(t *testing.T) {
@@ -26,22 +26,20 @@ func TestIDStringer(t *testing.T) {
 
 func TestIDFromString(t *testing.T) {
 	assert := assert.New(t)
-	expected := "00112233445566778899aabbccddeeff"
-	id, err := IDFromString(expected)
+	id, err := IDFromString(idStr)
 	assert.NoError(err, "Should not return an error.")
 	assert.IsType(ID{}, id, "Should be an ID type.")
-	assert.Equal(expected, id.String(), "Should return expected ID string.")
+	assert.Equal(idStr, id.String(), "Should return expected ID string.")
 }
 
 func TestIDFromBytes(t *testing.T) {
 	assert := assert.New(t)
-	expected := "00112233445566778899aabbccddeeff"
 	b := make([]byte, 16)
-	hex.Decode(b, []byte(expected))
+	hex.Decode(b, []byte(idStr))
 	id, err := IDFromBytes(b)
 	assert.NoError(err, "Should not return an error.")
 	assert.IsType(ID{}, id, "Should be an ID type.")
-	assert.Equal(expected, id.String(), "Should return expected ID string.")
+	assert.Equal(idStr, id.String(), "Should return expected ID string.")
 }
 
 func TestIDFromBytesToLong(t *testing.T) {
@@ -59,3 +57,20 @@ func TestIDFromStringToLong(t *testing.T) {
 	_, err := IDFromString(toLong)
 	assert.Error(err, "Should return an error.")
 }
+
+func TestIDEqual(t *testing.T) {
+	assert := assert.New(t)
+	a := NewID()
+	b := NewRandomID()
+	c := NewRandomID()
+	e, err := IDFromString(idStr)
+	assert.NoError(err)
+	f, err := IDFromString(idStr)
+	assert.NoError(err)
+	assert.False(a.Equal(b))
+	assert.False(a.Equal(c))
+	assert.False(b.Equal(c))
+	assert.True(e.Equal(f))
+}
+
+const idStr = "00112233445566778899aabbccddeeff"
