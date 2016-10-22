@@ -6,27 +6,31 @@ import (
 	"time"
 
 	"github.com/tcm1911/gomediacenter"
-	"gopkg.in/mgo.v2"
 )
 
-var lock sync.RWMutex
-var sessions map[string]*gomediacenter.Session
+// SimpleSessionManager implements the gomediacenter.SessionManager interface.
+// It stores the sessions in memory and saves the sessions to the SessionSaver
+// every minute.
+type SimpleSessionManager struct {
+	lock     sync.RWMutex
+	sessions map[string]*gomediacenter.Session
+}
 
 // AddSession adds a new sessions to the session manager to track.
-func AddSession(session *gomediacenter.Session) {
-	lock.Lock()
-	defer lock.Unlock()
-	if sessions == nil {
-		sessions = make(map[string]*gomediacenter.Session)
+func (m *SimpleSessionManager) AddSession(session *gomediacenter.Session) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if m.sessions == nil {
+		m.sessions = make(map[string]*gomediacenter.Session)
 	}
-	sessions[session.ID.Hex()] = session
+	m.sessions[session.ID.String()] = session
 }
 
 // GetSession gets a session object from the manager.
-func GetSession(id string) *gomediacenter.Session {
-	lock.RLock()
-	defer lock.RUnlock()
-	s, ok := sessions[id]
+func (m *SimpleSessionManager) GetSession(id string) *gomediacenter.Session {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	s, ok := m.sessions[id]
 	if ok {
 		return s
 	}
@@ -34,24 +38,24 @@ func GetSession(id string) *gomediacenter.Session {
 }
 
 // RemoveSession removes an active session so user is logged out.
-func RemoveSession(uid, sessionKey string) bool {
+func (m *SimpleSessionManager) RemoveSession(uid, sessionKey string) bool {
 	log.Printf("Removing session %s for user: %s\n", sessionKey, uid)
-	// First retrive the session and validate it.
-	session := GetSession(sessionKey)
+	// First retrieve the session and validate it.
+	session := m.GetSession(sessionKey)
 	if session == nil || session.UserID != uid {
 		return false
 	}
-	lock.Lock()
-	defer lock.Unlock()
-	delete(sessions, session.ID.Hex())
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	delete(m.sessions, session.ID.String())
 	return true
 }
 
 // Run starts the session manager.
-func Run(db gomediacenter.SessionSaver) chan struct{} {
-	lock.Lock()
-	sessions = getSessionMapFromDB(db)
-	lock.Unlock()
+func (m *SimpleSessionManager) Run(db gomediacenter.SessionSaver) chan struct{} {
+	m.lock.Lock()
+	m.sessions = getSessionMapFromDB(db)
+	m.lock.Unlock()
 
 	exitChan := make(chan struct{})
 
@@ -60,9 +64,9 @@ func Run(db gomediacenter.SessionSaver) chan struct{} {
 		for {
 			select {
 			case <-time.Tick(60 * time.Second):
-				saveSessionMap(db, sessions)
+				m.saveSessionMap(db, m.sessions)
 			case <-abort:
-				saveSessionMap(db, sessions)
+				m.saveSessionMap(db, m.sessions)
 				break loop
 			}
 		}
@@ -71,17 +75,17 @@ func Run(db gomediacenter.SessionSaver) chan struct{} {
 	return exitChan
 }
 
-func saveSessionMap(db gomediacenter.SessionSaver, sessions map[string]*gomediacenter.Session) {
-	lock.RLock()
-	defer lock.RUnlock()
-	size := len(sessions)
+func (m *SimpleSessionManager) saveSessionMap(db gomediacenter.SessionSaver, sessions map[string]*gomediacenter.Session) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	size := len(m.sessions)
 	if size == 0 {
 		return
 	}
 
 	a := make([]*gomediacenter.Session, size)
 	i := 0
-	for _, val := range sessions {
+	for _, val := range m.sessions {
 		if val != nil {
 			a[i] = val
 			i++
@@ -97,15 +101,12 @@ func saveSessionMap(db gomediacenter.SessionSaver, sessions map[string]*gomediac
 func getSessionMapFromDB(db gomediacenter.SessionSaver) map[string]*gomediacenter.Session {
 	sessions, err := db.GetSavedSessions()
 	if err != nil {
-		if err != mgo.ErrNotFound {
-			log.Println("Error while loading saved sessions from the db:", err)
-		}
 		return make(map[string]*gomediacenter.Session)
 	}
 
 	sessionsMap := make(map[string]*gomediacenter.Session)
 	for _, session := range sessions {
-		sessionsMap[session.ID.Hex()] = session
+		sessionsMap[session.ID.String()] = session
 	}
 	log.Println(len(sessionsMap), "sessions retrieved from the database.")
 	return sessionsMap
