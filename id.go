@@ -2,6 +2,7 @@ package gomediacenter
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 
@@ -65,3 +66,28 @@ func (i *ID) String() string {
 func (i *ID) Equal(b ID) bool {
 	return bytes.Equal(i.Bytes, b.Bytes)
 }
+
+// IsNil checks if the ID is nil.
+func (i *ID) IsNil() bool {
+	nullUUID := uuid.NullUUID{}
+	nullID := ID{Bytes: nullUUID.UUID.Bytes()}
+	return i.Equal(nullID)
+}
+
+// GetIDFromContext gets the ID from the context. If no ID exist in the context,
+// a null byte ID is returned.
+func GetIDFromContext(ctx context.Context) ID {
+	id, ok := ctx.Value(ctxKey).(ID)
+	if !ok {
+		null := uuid.NullUUID{}
+		return ID{Bytes: null.UUID.Bytes()}
+	}
+	return id
+}
+
+// AddIDToContext adds the ID to the context.
+func AddIDToContext(ctx context.Context, id ID) context.Context {
+	return context.WithValue(ctx, ctxKey, id)
+}
+
+const ctxKey string = "idKey"

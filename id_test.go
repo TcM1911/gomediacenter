@@ -1,9 +1,11 @@
 package gomediacenter
 
 import (
+	"context"
 	"encoding/hex"
 	"testing"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,6 +73,37 @@ func TestIDEqual(t *testing.T) {
 	assert.False(a.Equal(c))
 	assert.False(b.Equal(c))
 	assert.True(e.Equal(f))
+}
+
+func TestIsNil(t *testing.T) {
+	assert := assert.New(t)
+	id := NewID()
+	assert.False(id.IsNil(), "Should return false for non null id.")
+
+	nullUUID := uuid.NullUUID{}
+	nullID := ID{Bytes: nullUUID.UUID.Bytes()}
+	assert.True(nullID.IsNil(), "Should return true for null id.")
+}
+
+func TestContext(t *testing.T) {
+	assert := assert.New(t)
+	t.Run("Retrieving from context", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		nul := GetIDFromContext(ctx)
+		assert.True(nul.IsNil(), "Should return a null id")
+		id := NewID()
+		ctx = context.WithValue(ctx, ctxKey, id)
+		assert.Equal(GetIDFromContext(ctx), id, "Should return the id")
+	})
+	t.Run("Saving to context", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		id := NewID()
+		ctx = AddIDToContext(ctx, id)
+		actual := ctx.Value(ctxKey).(ID)
+		assert.Equal(id, actual, "Should add id to context")
+	})
 }
 
 const idStr = "00112233445566778899aabbccddeeff"
