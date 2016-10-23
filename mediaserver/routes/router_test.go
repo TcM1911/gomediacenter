@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
+	"github.com/tcm1911/gomediacenter/auth"
 	"github.com/tcm1911/gomediacenter/mediaserver/routes"
 	"github.com/tcm1911/gomediacenter/mongo"
 	"golang.org/x/crypto/bcrypt"

@@ -27,10 +27,10 @@ func (m *SimpleSessionManager) AddSession(session *gomediacenter.Session) {
 }
 
 // GetSession gets a session object from the manager.
-func (m *SimpleSessionManager) GetSession(id string) *gomediacenter.Session {
+func (m *SimpleSessionManager) GetSession(id gomediacenter.ID) *gomediacenter.Session {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	s, ok := m.sessions[id]
+	s, ok := m.sessions[id.String()]
 	if ok {
 		return s
 	}
@@ -38,11 +38,11 @@ func (m *SimpleSessionManager) GetSession(id string) *gomediacenter.Session {
 }
 
 // RemoveSession removes an active session so user is logged out.
-func (m *SimpleSessionManager) RemoveSession(uid, sessionKey string) bool {
+func (m *SimpleSessionManager) RemoveSession(uid, sessionKey gomediacenter.ID) bool {
 	log.Printf("Removing session %s for user: %s\n", sessionKey, uid)
 	// First retrieve the session and validate it.
 	session := m.GetSession(sessionKey)
-	if session == nil || session.UserID != uid {
+	if session == nil || !session.UserID.Equal(uid) {
 		return false
 	}
 	m.lock.Lock()

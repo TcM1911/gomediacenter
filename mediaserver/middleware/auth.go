@@ -5,7 +5,6 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/mediaserver/controllers"
-	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 )
 
 // AdminOrLoggedInUser only calls the next HandlerFunc if the session is and admin

@@ -14,12 +14,23 @@ import (
 
 // User struct holds all the information about a user.
 type User struct {
+	Name                string
+	ID                  ID
+	HasPasswd           bool
+	HasConfiguredPasswd bool
+	HasConfigEasyPasswd bool
+	Password            []byte
+	Configuration       *UserConfig
+	Policy              *UserPolicy
+}
+
+// UserDTO is the struct that's encoded to JSON.
+type UserDTO struct {
 	Name                string      `json:"Name"`
-	ID                  ID          `json:"id" bson:"id"`
+	ID                  string      `json:"id"`
 	HasPasswd           bool        `json:"HasPassword" bson:"haspassword"`
 	HasConfiguredPasswd bool        `json:"HasConfiguredPassword"`
 	HasConfigEasyPasswd bool        `json:"HasConfiguredEasyPassword"`
-	Password            []byte      `json:"-" bson:"password"`
 	Configuration       *UserConfig `json:"Configuration"`
 	Policy              *UserPolicy `json:"Policy"`
 }
@@ -94,6 +105,18 @@ type ItemUserData struct {
 ////////////
 // Public //
 ////////////
+
+// UserToDTO transform a user struct to DTO struct.
+func UserToDTO(u *User) *UserDTO {
+	return &UserDTO{
+		Name:                u.Name,
+		ID:                  u.ID.String(),
+		HasPasswd:           u.HasPasswd,
+		HasConfiguredPasswd: u.HasConfiguredPasswd,
+		HasConfigEasyPasswd: u.HasConfigEasyPasswd,
+		Configuration:       u.Configuration,
+		Policy:              u.Policy}
+}
 
 // GetUIDFromContext gets the ID from the context. If no ID exist in the context,
 // a null byte ID is returned.

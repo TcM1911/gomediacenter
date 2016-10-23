@@ -14,7 +14,7 @@ type Database interface {
 // ItemFinder can find an item in the database.
 type ItemFinder interface {
 	FindItemByID(id ID) (MEDIATYPE, interface{}, error)
-	FindItemUserData(uid, itemID string) (*ItemUserData, error)
+	FindItemUserData(uid, itemID ID) (*ItemUserData, error)
 }
 
 // IntroFinder can find intros for an item.
@@ -38,12 +38,6 @@ type UserManager interface {
 	GetAllUsers(filter map[string]interface{}) ([]*User, error)
 	DeleteUser(ID ID) error
 	ChangeUserPassword(uid ID, newPassword []byte) error
-}
-
-// SessionSaver can save and get stored sessions from the database.
-type SessionSaver interface {
-	GetSavedSessions() ([]*Session, error)
-	SaveSessions([]*Session) error
 }
 
 type LibraryMaintainer interface {

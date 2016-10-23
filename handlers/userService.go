@@ -1,8 +1,9 @@
-package controllers
+package handlers
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,9 +11,7 @@ import (
 	"strings"
 
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/mediaserver/controllers/auth"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/mgo.v2/bson"
 )
 
 /////////////
@@ -39,14 +38,14 @@ func GetAllUsers(db gomediacenter.UserManager) http.HandlerFunc {
 			if val := queryVars.Get(key); val != "" {
 				if parsedVal, err := strconv.ParseBool(val); err == nil {
 					filter[key] = parsedVal
-					log.Println("Search filtered by", key, "=", parsedVal)
+					log.Printf("Search filtered by %s = %t\n", key, parsedVal)
 				}
 			}
 		}
 		users, err := getFilteredUserList(filter, db)
 		if err != nil {
 			http.Error(w, "error when getting all users", http.StatusInternalServerError)
-			log.Println("Error when querying for all users:", err)
+			log.Printf("Error when querying for all users: %s", err)
 			return
 		}
 		writeJSONBody(w, users)
@@ -62,7 +61,7 @@ func GetAllUsersPublic(db gomediacenter.UserManager) http.HandlerFunc {
 		users, err := getFilteredUserList(filter, db)
 		if err != nil {
 			http.Error(w, "error when getting all users", http.StatusInternalServerError)
-			log.Println("Error when querying for all users:", err)
+			log.Printf("Error when querying for all users: %s", err)
 			return
 		}
 
@@ -79,17 +78,14 @@ func GetAllUsersPublic(db gomediacenter.UserManager) http.HandlerFunc {
 // Can only be accessed by the authenticated user or admin.
 func GetUserByID(db gomediacenter.UserManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
-		if !ok {
-			return
-		}
+		uid := gomediacenter.GetUIDFromContext(r.Context())
 
 		user, err := db.GetUserByID(uid)
-		if ok := checkAndWriteHTTPErrorForIDQueries(uid, err,
+		if ok := checkAndWriteHTTPErrorForIDQueries(uid.String(), err,
 			"Error while retrieving the user", w); !ok {
 			return
 		}
-		writeJSONBody(w, user)
+		writeJSONBody(w, gomediacenter.UserToDTO(user))
 	}
 }
 
@@ -105,33 +101,25 @@ func GetOfflineUserByID(db gomediacenter.UserManager) http.HandlerFunc {
 func DeleteUser(db gomediacenter.UserManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Serving removing user request")
-		uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
-		if !ok {
-			return
-		}
-
+		uid := gomediacenter.GetUIDFromContext(r.Context())
 		err := db.DeleteUser(uid)
-		if ok := checkAndWriteHTTPErrorForIDQueries(uid, err,
+		if ok := checkAndWriteHTTPErrorForIDQueries(uid.String(), err,
 			"Error when deleting", w); !ok {
 			return
 		}
-		log.Println("User", uid, "removed.")
+		log.Printf("User %s removed.", uid.String())
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
 // Authenticate authenticates a user when a POST is sent to /Users/{uid}/Authenticate.
 // The password is past in the body in the parameter password.
-func Authenticate(db gomediacenter.UserManager) http.HandlerFunc {
+func Authenticate(db gomediacenter.UserManager, auth gomediacenter.SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Processing authentication request")
-		uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
-		if !ok {
-			return
-		}
-
+		uid := gomediacenter.GetUIDFromContext(r.Context())
 		user, err := db.GetUserByID(uid)
-		if ok := checkAndWriteHTTPErrorForIDQueries(uid, err, "Error when getting user data", w); !ok {
+		if ok := checkAndWriteHTTPErrorForIDQueries(uid.String(), err, "Error when getting user data", w); !ok {
 			return
 		}
 		var form gomediacenter.LoginRequest
@@ -142,13 +130,13 @@ func Authenticate(db gomediacenter.UserManager) http.HandlerFunc {
 			return
 		}
 		passwd := form.Password
-		authenticateUser(user, passwd, w, r)
+		authenticateUser(auth, user, passwd, w, r)
 	}
 }
 
 // AuthenticateByName authenticates a user when a POST is sent to /Users/{uid}/AuthenticateByName.
 // Username and password is past in the body as the parameters Username and password.
-func AuthenticateByName(db gomediacenter.UserManager) http.HandlerFunc {
+func AuthenticateByName(db gomediacenter.UserManager, auth gomediacenter.SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Processing authentication request by name")
 
@@ -168,21 +156,18 @@ func AuthenticateByName(db gomediacenter.UserManager) http.HandlerFunc {
 		user, err := db.GetUserByName(username)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
-			log.Println("Error when trying to retrieve user profile for", username, err)
+			log.Printf("Error when trying to retrieve user profile for %s: %s", username, err)
 			return
 		}
-		authenticateUser(user, passwd, w, r)
+		authenticateUser(auth, user, passwd, w, r)
 	}
 }
 
 // LogoutUser logs out the user and removes the sessions from the session manager.
-func LogoutUser() http.HandlerFunc {
+func LogoutUser(auth gomediacenter.SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
-		if !ok {
-			return
-		}
-		key := r.Header.Get(gomediacenter.SessionKeyHeader)
+		uid := gomediacenter.GetUIDFromContext(r.Context())
+		key := gomediacenter.GetIDFromContext(r.Context())
 		if ok := auth.RemoveSession(uid, key); ok {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -196,12 +181,8 @@ func LogoutUser() http.HandlerFunc {
 // newPassword and currentPassword.
 func ChangeUserPassword(db gomediacenter.UserManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
-		if !ok {
-			return
-		}
-		log.Println("Changing the password for", uid)
-
+		uid := gomediacenter.GetUIDFromContext(r.Context())
+		log.Printf("Changing the password for %s", uid.String())
 		var req gomediacenter.PasswordRequest
 		defer gomediacenter.CloseReqBody(r)
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -217,31 +198,29 @@ func ChangeUserPassword(db gomediacenter.UserManager) http.HandlerFunc {
 		}
 
 		user, err := db.GetUserByID(uid)
-		if ok := checkAndWriteHTTPErrorForIDQueries(uid, err, "Error when getting user data", w); !ok {
+		if ok := checkAndWriteHTTPErrorForIDQueries(uid.String(), err, "Error when getting user data", w); !ok {
 			return
 		}
-
 		if user.HasPasswd && (bcrypt.CompareHashAndPassword(
 			user.Password,
 			[]byte(currentPass)) != nil) {
-			logError(w, errors.New("password don't match"), "Verification of the current password failed for"+uid+":",
-				"password and uid don't match", http.StatusUnauthorized)
+			logmsg := fmt.Sprintf("Verification of the current password failed for %s", uid.String())
+			logError(w, errors.New("password doesn't match"), logmsg,
+				"password and uid doesn't match", http.StatusUnauthorized)
 			return
 		}
-
 		passHash, err := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
 		if err != nil {
 			logError(w, err, "Error when generating password hash:", "failed to generate a new hash",
 				http.StatusInternalServerError)
 			return
 		}
-
 		if err := db.ChangeUserPassword(uid, passHash); err != nil {
-			logError(w, err, "Error when updating password for"+uid+":", "Error when updating the password",
+			logError(w, err, "Error when updating password for"+uid.String()+":", "Error when updating the password",
 				http.StatusInternalServerError)
 			return
 		}
-		log.Printf("Password for %s has been updated.\n", uid)
+		log.Printf("Password for %s has been updated.\n", uid.String())
 		w.WriteHeader(http.StatusOK)
 	}
 }
@@ -268,11 +247,8 @@ func UpdateUser(db gomediacenter.UserManager) http.HandlerFunc {
 			return
 		}
 
-		uid, ok := getIDFromPathVarAndCheckForErr("uid", r, w)
-		if !ok {
-			return
-		}
-		log.Printf("User %s is being updated.\n", uid)
+		uid := gomediacenter.GetUIDFromContext(r.Context())
+		log.Printf("User %s is being updated.\n", uid.String())
 		if err := db.UpdateUser(uid, newUserStruct); err != nil {
 			logError(w, err, "Error when processing the request:",
 				"Error processing the request", http.StatusInternalServerError)
@@ -309,7 +285,7 @@ func UpdateUserConfiguration(db gomediacenter.UserManager) http.HandlerFunc {
 		if err != nil {
 			return
 		}
-		log.Printf("Updating user %s's configuration.", uid)
+		log.Printf("Updating user %s's configuration.", uid.String())
 		if err = db.UpdateUserConfiguration(uid, c); err != nil {
 			logError(w, err, "Error when updating user's configuration.",
 				"Error when updating user's configuration.", http.StatusInternalServerError)
@@ -347,7 +323,7 @@ func NewUser(db gomediacenter.UserManager) http.HandlerFunc {
 		}
 
 		// Return the user in the response body. This is how Emby does it.
-		writeJSONBody(w, user)
+		writeJSONBody(w, gomediacenter.UserToDTO(user))
 	}
 }
 
@@ -369,7 +345,7 @@ func getUIDFromPathVars(r *http.Request) (string, error) {
 	return vars["uid"], nil
 }
 
-func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWriter, r *http.Request) {
+func authenticateUser(auth gomediacenter.SessionManager, user *gomediacenter.User, passwd string, w http.ResponseWriter, r *http.Request) {
 	if user.HasPasswd && (bcrypt.CompareHashAndPassword(user.Password, []byte(passwd)) != nil) {
 		logError(w, errors.New("incorrect password"), "Authentication failed:",
 			"Username and password missmatch.", http.StatusUnauthorized)
@@ -381,10 +357,10 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 		return
 	}
 
-	authToken := bson.NewObjectId()
+	authToken := gomediacenter.NewRandomID()
 	session := &gomediacenter.Session{
 		ID:            authToken,
-		UserID:        user.ID.Hex(),
+		UserID:        user.ID,
 		UserName:      user.Name,
 		Admin:         user.Policy.Admin,
 		DeviceID:      client.DeviceID,
@@ -395,7 +371,7 @@ func authenticateUser(user *gomediacenter.User, passwd string, w http.ResponseWr
 	auth.AddSession(session)
 	log.Println(user.Name, "authenticated.")
 	resp := &gomediacenter.AuthUserResponse{}
-	resp.Token = authToken.Hex()
+	resp.Token = authToken.String()
 	resp.Session = session
 	resp.User = user
 	writeJSONBody(w, resp)
@@ -434,17 +410,13 @@ func parseAuthHeader(r *http.Request) (client, error) {
 	return client, nil
 }
 
-func getUIDAndRequestBody(r *http.Request, w http.ResponseWriter, v interface{}) (string, error) {
+func getUIDAndRequestBody(r *http.Request, w http.ResponseWriter, v interface{}) (gomediacenter.ID, error) {
 	defer gomediacenter.CloseReqBody(r)
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
 		logError(w, err, "Error when decoding request body.", "Error when processing the request.", http.StatusBadRequest)
-		return "", err
+		return gomediacenter.ID{}, err
 	}
 
-	uid, err := getUIDFromPathVars(r)
-	if err != nil {
-		logError(w, err, "Error when getting uid.", "Error when processing the request.", http.StatusInternalServerError)
-		return "", err
-	}
+	uid := gomediacenter.GetUIDFromContext(r.Context())
 	return uid, nil
 }

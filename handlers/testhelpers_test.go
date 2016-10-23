@@ -1,4 +1,4 @@
-package controllers
+package handlers
 
 import (
 	"io/ioutil"
@@ -22,17 +22,17 @@ type mockDB struct {
 	mock.Mock
 }
 
-func (m *mockDB) FindItemByID(s string) (gomediacenter.MEDIATYPE, interface{}, error) {
+func (m *mockDB) FindItemByID(s gomediacenter.ID) (gomediacenter.MEDIATYPE, interface{}, error) {
 	args := m.Called(s)
 	return args.Get(0).(gomediacenter.MEDIATYPE), args.Get(1).(interface{}), args.Error(2)
 }
 
-func (m *mockDB) FindItemUserData(uid, itemID string) (*gomediacenter.ItemUserData, error) {
+func (m *mockDB) FindItemUserData(uid, itemID gomediacenter.ID) (*gomediacenter.ItemUserData, error) {
 	args := m.Called(uid, itemID)
 	return args.Get(0).(*gomediacenter.ItemUserData), args.Error(1)
 }
 
-func (m *mockDB) FindItemIntro(id string) ([]*gomediacenter.Intro, error) {
+func (m *mockDB) FindItemIntro(id gomediacenter.ID) ([]*gomediacenter.Intro, error) {
 	args := m.Called(id)
 	return args.Get(0).([]*gomediacenter.Intro), args.Error(1)
 }
@@ -42,7 +42,7 @@ func (m *mockDB) AddNewUser(user *gomediacenter.User) error {
 	return args.Error(0)
 }
 
-func (m *mockDB) GetUserByID(s string) (*gomediacenter.User, error) {
+func (m *mockDB) GetUserByID(s gomediacenter.ID) (*gomediacenter.User, error) {
 	args := m.Called(s)
 	return args.Get(0).(*gomediacenter.User), args.Error(1)
 }
@@ -52,7 +52,7 @@ func (m *mockDB) GetAllUsers(filter map[string]interface{}) ([]*gomediacenter.Us
 	return args.Get(0).([]*gomediacenter.User), args.Error(1)
 }
 
-func (m *mockDB) DeleteUser(hexString string) error {
+func (m *mockDB) DeleteUser(hexString gomediacenter.ID) error {
 	args := m.Called(hexString)
 	return args.Error(0)
 }
@@ -62,27 +62,27 @@ func (m *mockDB) GetUserByName(name string) (*gomediacenter.User, error) {
 	return args.Get(0).(*gomediacenter.User), args.Error(1)
 }
 
-func (m *mockDB) GetUserPasswordHash(uid string) ([]byte, error) {
+func (m *mockDB) GetUserPasswordHash(uid gomediacenter.ID) ([]byte, error) {
 	args := m.Called(uid)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *mockDB) ChangeUserPassword(uid string, newPassword []byte) error {
+func (m *mockDB) ChangeUserPassword(uid gomediacenter.ID, newPassword []byte) error {
 	args := m.Called(uid, newPassword)
 	return args.Error(0)
 }
 
-func (m *mockDB) UpdateUser(uid string, user *gomediacenter.User) error {
+func (m *mockDB) UpdateUser(uid gomediacenter.ID, user *gomediacenter.User) error {
 	args := m.Called(uid, user)
 	return args.Error(0)
 }
 
-func (m *mockDB) UpdateUserPolicy(uid string, policy *gomediacenter.UserPolicy) error {
+func (m *mockDB) UpdateUserPolicy(uid gomediacenter.ID, policy *gomediacenter.UserPolicy) error {
 	args := m.Called(uid, policy)
 	return args.Error(0)
 }
 
-func (m *mockDB) UpdateUserConfiguration(uid string, conf *gomediacenter.UserConfig) error {
+func (m *mockDB) UpdateUserConfiguration(uid gomediacenter.ID, conf *gomediacenter.UserConfig) error {
 	args := m.Called(uid, conf)
 	return args.Error(0)
 }

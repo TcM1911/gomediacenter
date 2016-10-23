@@ -1,4 +1,4 @@
-package controllers
+package handlers
 
 import (
 	"log"
@@ -13,7 +13,7 @@ import (
 /////////////
 
 type movieResponse struct {
-	Movie        *gomediacenter.Movie
+	Movie        *gomediacenter.MovieDTO
 	ItemUserData *gomediacenter.ItemUserData `json:"UserData"`
 }
 
@@ -33,10 +33,9 @@ func UserItemHandler(db gomediacenter.ItemFinder) http.HandlerFunc {
 
 		log.Println("Handeling GET request for", r.URL)
 
-		pathVars := GetContextVar(r, "pathVars").(map[string]string)
 		// TODO: Add user restriction. Need to check if the user is allowed to view this item.
-		uid := pathVars["uid"]
-		id := pathVars["id"]
+		uid := gomediacenter.GetUIDFromContext(r.Context())
+		id := gomediacenter.GetIDFromContext(r.Context())
 
 		mediaType, media, err := db.FindItemByID(id)
 		if err == mgo.ErrNotFound {
@@ -68,11 +67,11 @@ func UserItemHandler(db gomediacenter.ItemFinder) http.HandlerFunc {
 }
 
 // UserItemIntrosHandler returns a list of intros to play before the main media item plays.
-func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
+/*func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 	pathVars := GetContextVar(r, "pathVars").(map[string]string)
 	// TODO: Add user restriction. Need to check if the user is allowed to view this item.
 	//uid := pathVars["uid"]
-	id := pathVars["id"]
+	id := gomediacenter.IDFromString(pathVars["id"])
 
 	database := GetContextVar(r, "db").(gomediacenter.IntroFinder)
 	if database == nil {
@@ -94,14 +93,20 @@ func UserItemIntrosHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSONBody(w, res)
-}
+}*/
 
 /////////////
 // Private //
 /////////////
 
 func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie, u *gomediacenter.ItemUserData) {
-	res := movieResponse{Movie: m, ItemUserData: u}
+	dto, err := gomediacenter.MovieToDTO(m)
+	if err != nil {
+		logError(w, err, "Error when transforming movie to DTO:", "Failed to process the request.",
+			http.StatusInternalServerError)
+		return
+	}
+	res := movieResponse{Movie: dto, ItemUserData: u}
 	writeJSONBody(w, res)
 }
 
