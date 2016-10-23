@@ -1,6 +1,7 @@
 package gomediacenter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -93,6 +94,19 @@ type ItemUserData struct {
 ////////////
 // Public //
 ////////////
+
+// GetUIDFromContext gets the ID from the context. If no ID exist in the context,
+// a null byte ID is returned.
+func GetUIDFromContext(ctx context.Context) ID {
+	return getIDFromContext(ctx, uidCtxKey)
+}
+
+// AddUIDToContext adds the ID to the context.
+func AddUIDToContext(ctx context.Context, id ID) context.Context {
+	return addIDToContext(ctx, uidCtxKey, id)
+}
+
+const uidCtxKey = "uidKey"
 
 // NewUser creates a new User instance with the default configuration.
 func NewUser(name string) *User {

@@ -93,7 +93,7 @@ func TestContext(t *testing.T) {
 		nul := GetIDFromContext(ctx)
 		assert.True(nul.IsNil(), "Should return a null id")
 		id := NewID()
-		ctx = context.WithValue(ctx, ctxKey, id)
+		ctx = context.WithValue(ctx, idCtxKey, id)
 		assert.Equal(GetIDFromContext(ctx), id, "Should return the id")
 	})
 	t.Run("Saving to context", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestContext(t *testing.T) {
 		ctx := context.Background()
 		id := NewID()
 		ctx = AddIDToContext(ctx, id)
-		actual := ctx.Value(ctxKey).(ID)
+		actual := ctx.Value(idCtxKey).(ID)
 		assert.Equal(id, actual, "Should add id to context")
 	})
 }

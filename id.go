@@ -77,7 +77,20 @@ func (i *ID) IsNil() bool {
 // GetIDFromContext gets the ID from the context. If no ID exist in the context,
 // a null byte ID is returned.
 func GetIDFromContext(ctx context.Context) ID {
-	id, ok := ctx.Value(ctxKey).(ID)
+	return getIDFromContext(ctx, idCtxKey)
+}
+
+// AddIDToContext adds the ID to the context.
+func AddIDToContext(ctx context.Context, id ID) context.Context {
+	return addIDToContext(ctx, idCtxKey, id)
+}
+
+func addIDToContext(ctx context.Context, key string, id ID) context.Context {
+	return context.WithValue(ctx, key, id)
+}
+
+func getIDFromContext(ctx context.Context, key string) ID {
+	id, ok := ctx.Value(key).(ID)
 	if !ok {
 		null := uuid.NullUUID{}
 		return ID{Bytes: null.UUID.Bytes()}
@@ -85,9 +98,4 @@ func GetIDFromContext(ctx context.Context) ID {
 	return id
 }
 
-// AddIDToContext adds the ID to the context.
-func AddIDToContext(ctx context.Context, id ID) context.Context {
-	return context.WithValue(ctx, ctxKey, id)
-}
-
-const ctxKey string = "idKey"
+const idCtxKey string = "idKey"
