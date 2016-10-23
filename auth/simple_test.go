@@ -31,39 +31,39 @@ func TestSessionsManager(t *testing.T) {
 	t.Run("GetSession of valid session", func(t *testing.T) {
 		t.Parallel()
 		// Should return a session with the same data as was saved.
-		assert.Equal(session, *manager.GetSession(id.String()))
+		assert.Equal(session, *manager.GetSession(id))
 	})
 	t.Run("GetSession of unknown session", func(t *testing.T) {
 		t.Parallel()
 		// Should return a nil pointer if sessions isn't known.
 		randID := gomediacenter.NewRandomID()
-		assert.Nil(manager.GetSession(randID.String()))
+		assert.Nil(manager.GetSession(randID))
 	})
 	t.Run("Remove a valid session", func(t *testing.T) {
 		t.Parallel()
 		id := gomediacenter.NewRandomID()
 		uid := gomediacenter.NewID()
-		session := &gomediacenter.Session{Admin: false, ID: id, UserID: uid.String()}
+		session := &gomediacenter.Session{Admin: false, ID: id, UserID: uid}
 		manager.AddSession(session)
-		assert.True(manager.RemoveSession(uid.String(), id.String()), "Should remove known session")
+		assert.True(manager.RemoveSession(uid, id), "Should remove known session")
 	})
 	t.Run("Don't remove a invalid session", func(t *testing.T) {
 		t.Parallel()
 		id := gomediacenter.NewRandomID()
 		uid := gomediacenter.NewID()
 		invalidID := gomediacenter.NewRandomID()
-		session := &gomediacenter.Session{Admin: false, ID: id, UserID: uid.String()}
+		session := &gomediacenter.Session{Admin: false, ID: id, UserID: uid}
 		manager.AddSession(session)
-		assert.False(manager.RemoveSession(uid.String(), invalidID.String()), "Should not remove an unknown session")
+		assert.False(manager.RemoveSession(uid, invalidID), "Should not remove an unknown session")
 	})
 	t.Run("Don't remove a valid session if uid is not matching", func(t *testing.T) {
 		t.Parallel()
 		id := gomediacenter.NewRandomID()
 		uid := gomediacenter.NewID()
 		invalidUID := gomediacenter.NewID()
-		session := &gomediacenter.Session{Admin: false, ID: id, UserID: uid.String()}
+		session := &gomediacenter.Session{Admin: false, ID: id, UserID: uid}
 		manager.AddSession(session)
-		assert.False(manager.RemoveSession(invalidUID.String(), id.String()), "Should not remove if uid is incorrect")
+		assert.False(manager.RemoveSession(invalidUID, id), "Should not remove if uid is incorrect")
 	})
 }
 
