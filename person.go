@@ -7,6 +7,7 @@ type Person struct {
 	Role     string
 	Type     string
 	ImageTag string
+	ImdbID   string
 }
 
 // PersonDTO is the struct encoded to JSON.
@@ -16,6 +17,7 @@ type PersonDTO struct {
 	Role     string `json:"Role"`
 	Type     string `json:"Type"`
 	ImageTag string `json:"PrimaryImageTag"`
+	ImdbID   string `json:"Imdb"`
 }
 
 // PersonToDTO converts the Person struct to the DTO.
