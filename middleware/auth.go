@@ -24,11 +24,11 @@ func AdminOrLoggedInUser(auth gomediacenter.SessionManager, next http.HandlerFun
 			return
 		}
 
-		if session.UserID.Equal(uid) || session.Admin {
-			next(w, r)
-		} else {
+		if !session.UserID.Equal(uid) && !session.Admin {
 			w.WriteHeader(http.StatusUnauthorized)
 		}
+		r = r.WithContext(gomediacenter.AddIDToContext(r.Context(), session.ID))
+		next(w, r)
 	}
 }
 

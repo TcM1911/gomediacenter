@@ -1,5 +1,7 @@
 package gomediacenter
 
+import "context"
+
 // Session holds all the data for an authenticated session.
 type Session struct {
 	ID            ID       `bson:"id" json:"Id"`
@@ -27,6 +29,20 @@ type SessionManager interface {
 	// Starts up the manager.
 	Run(saver SessionSaver) chan struct{}
 }
+
+func AddSessionToContext(ctx context.Context, s Session) context.Context {
+	return context.WithValue(ctx, contextSessionKey, s)
+}
+
+func GetSessionFromContext(ctx context.Context) Session {
+	v, ok := ctx.Value(contextSessionKey).(Session)
+	if !ok {
+		panic("Failed to type cast the session.")
+	}
+	return v
+}
+
+const contextSessionKey = "contextSessionKey"
 
 // SessionSaver can save and get stored sessions from the database.
 type SessionSaver interface {
