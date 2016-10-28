@@ -39,7 +39,7 @@ func (m *SimpleSessionManager) GetSession(id gomediacenter.ID) *gomediacenter.Se
 
 // RemoveSession removes an active session so user is logged out.
 func (m *SimpleSessionManager) RemoveSession(uid, sessionKey gomediacenter.ID) bool {
-	log.Printf("Removing session %s for user: %s\n", sessionKey, uid)
+	log.Printf("Removing session %s for user: %s\n", sessionKey.String(), uid.String())
 	// First retrieve the session and validate it.
 	session := m.GetSession(sessionKey)
 	if session == nil || !session.UserID.Equal(uid) {
