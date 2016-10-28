@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/tcm1911/gomediacenter"
+	"github.com/tcm1911/gomediacenter/middleware"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -31,7 +31,7 @@ type client struct {
 func GetAllUsers(db gomediacenter.UserManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Serving request for all users.")
-		queryVars := GetContextVar(r, "queryVars").(url.Values)
+		queryVars := middleware.GetQueryVarsFromContext(r.Context())
 		filter := make(map[string]interface{})
 		keys := []string{"IsHidden", "IsDisabled", "IsGuest"}
 		for _, key := range keys {
@@ -85,7 +85,7 @@ func GetUserByID(db gomediacenter.UserManager) http.HandlerFunc {
 			"Error while retrieving the user", w); !ok {
 			return
 		}
-		writeJSONBody(w, gomediacenter.UserToDTO(user))
+		writeJSONBody(w, user)
 	}
 }
 
@@ -323,7 +323,7 @@ func NewUser(db gomediacenter.UserManager) http.HandlerFunc {
 		}
 
 		// Return the user in the response body. This is how Emby does it.
-		writeJSONBody(w, gomediacenter.UserToDTO(user))
+		writeJSONBody(w, user)
 	}
 }
 

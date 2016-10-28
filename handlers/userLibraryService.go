@@ -13,7 +13,7 @@ import (
 /////////////
 
 type movieResponse struct {
-	Movie        *gomediacenter.MovieDTO
+	Movie        *gomediacenter.Movie
 	ItemUserData *gomediacenter.ItemUserData `json:"UserData"`
 }
 
@@ -100,13 +100,7 @@ func UserItemHandler(db gomediacenter.ItemFinder) http.HandlerFunc {
 /////////////
 
 func writeMovieResponse(w http.ResponseWriter, m *gomediacenter.Movie, u *gomediacenter.ItemUserData) {
-	dto, err := gomediacenter.MovieToDTO(m)
-	if err != nil {
-		logError(w, err, "Error when transforming movie to DTO:", "Failed to process the request.",
-			http.StatusInternalServerError)
-		return
-	}
-	res := movieResponse{Movie: dto, ItemUserData: u}
+	res := movieResponse{Movie: m, ItemUserData: u}
 	writeJSONBody(w, res)
 }
 

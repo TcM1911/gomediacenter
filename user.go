@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -12,22 +13,11 @@ import (
 // Structs //
 /////////////
 
-// User struct holds all the information about a user.
+// User is the struct that's encoded to JSON.
 type User struct {
-	Name                string
-	ID                  ID
-	HasPasswd           bool
-	HasConfiguredPasswd bool
-	HasConfigEasyPasswd bool
+	Name                string `json:"Name"`
+	ID                  ID     `json:"id"`
 	Password            []byte
-	Configuration       *UserConfig
-	Policy              *UserPolicy
-}
-
-// UserDTO is the struct that's encoded to JSON.
-type UserDTO struct {
-	Name                string      `json:"Name"`
-	ID                  string      `json:"id"`
 	HasPasswd           bool        `json:"HasPassword" bson:"haspassword"`
 	HasConfiguredPasswd bool        `json:"HasConfiguredPassword"`
 	HasConfigEasyPasswd bool        `json:"HasConfiguredEasyPassword"`
@@ -106,18 +96,6 @@ type ItemUserData struct {
 // Public //
 ////////////
 
-// UserToDTO transform a user struct to DTO struct.
-func UserToDTO(u *User) *UserDTO {
-	return &UserDTO{
-		Name:                u.Name,
-		ID:                  u.ID.String(),
-		HasPasswd:           u.HasPasswd,
-		HasConfiguredPasswd: u.HasConfiguredPasswd,
-		HasConfigEasyPasswd: u.HasConfigEasyPasswd,
-		Configuration:       u.Configuration,
-		Policy:              u.Policy}
-}
-
 // GetUIDFromContext gets the ID from the context. If no ID exist in the context,
 // a null byte ID is returned.
 func GetUIDFromContext(ctx context.Context) ID {
@@ -181,9 +159,9 @@ func AuthenticateUserByNameReqest(name, passwd, apiURL, authHeader string) (*Aut
 }
 
 // AuthenticateUserByIDReqest creates and sends a login request to the API.
-func AuthenticateUserByIDReqest(id, passwd, apiURL, authHeader string) (*AuthUserResponse, int, error) {
+func AuthenticateUserByIDReqest(id ID, passwd, apiURL, authHeader string) (*AuthUserResponse, int, error) {
 	reqBody := &LoginRequest{Name: "", Password: passwd}
-	url := fmt.Sprintf("%s/Users/%s/Authenticate", apiURL, id)
+	url := fmt.Sprintf("%s/Users/%s/Authenticate", apiURL, id.String())
 	return sendAuthenticationRequest(reqBody, url, authHeader)
 }
 
@@ -206,11 +184,11 @@ func sendAuthenticationRequest(body *LoginRequest, url, header string) (*AuthUse
 
 // LogoutUserReq sends a logout request to the api server. It returns true if the request
 // was successful.
-func LogoutUserReq(uid, token, apiServer string) (bool, error) {
-	if uid == "" || token == "" || apiServer == "" {
+func LogoutUserReq(uid, token ID, apiServer string) (bool, error) {
+	if uid.IsNil() || token.IsNil() || apiServer == "" {
 		return false, errors.New("arguments can't be empty")
 	}
-	url := fmt.Sprintf("%s/Users/%s/Logout", apiServer, uid)
+	url := fmt.Sprintf("%s/Users/%s/Logout", apiServer, uid.String())
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		return false, err
@@ -230,18 +208,23 @@ func LogoutUserReq(uid, token, apiServer string) (bool, error) {
 }
 
 // GetUser gets the user data from the api server.
-func GetUser(uid, token, apiServer string) (*User, int, error) {
-	if uid == "" || token == "" || apiServer == "" {
+func GetUser(uid, token ID, apiServer string) (*User, int, error) {
+	if uid.IsNil() || token.IsNil() || apiServer == "" {
 		return nil, 0, errors.New("arguments can't be empty")
 	}
-	url := fmt.Sprintf("%s/Users/%s", apiServer, uid)
+	url := fmt.Sprintf("%s/Users/%s", apiServer, uid.String())
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, 0, err
 	}
 	setHeader(req, token)
 
+	log.Printf("Sending user request to %s", url)
 	resp, err := http.DefaultClient.Do(req)
+	if resp == nil {
+		log.Println("No response from the server.")
+		return nil, 0, fmt.Errorf("Request to server failed\n")
+	}
 	defer CloseRespBody(resp)
 	code := resp.StatusCode
 	if err != nil {
@@ -260,7 +243,7 @@ func GetUser(uid, token, apiServer string) (*User, int, error) {
 }
 
 // CreateUser sends a create new user request to the api and return the new user struct created.
-func CreateUser(name, token, apiServer string) (*User, error) {
+func CreateUser(name string, token ID, apiServer string) (*User, error) {
 	if name == "" {
 		return nil, errors.New("empty username")
 	}
@@ -287,32 +270,32 @@ func CreateUser(name, token, apiServer string) (*User, error) {
 }
 
 // UpdateUser sends a request to the api server to update the user profile.
-func UpdateUser(newUserStruct *User, uid, token, apiServer string) (int, error) {
-	url := fmt.Sprintf("%s/Users/%s", apiServer, uid)
+func UpdateUser(newUserStruct *User, uid, token ID, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s", apiServer, uid.String())
 	return postUpdateToServer(newUserStruct, url, token)
 }
 
 // UpdateUserPolicy sends a request to the api server to update the user's policy.
-func UpdateUserPolicy(policy *UserPolicy, uid, token, apiServer string) (int, error) {
-	url := fmt.Sprintf("%s/Users/%s/Policy", apiServer, uid)
+func UpdateUserPolicy(policy *UserPolicy, uid, token ID, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s/Policy", apiServer, uid.String())
 	return postUpdateToServer(policy, url, token)
 }
 
 // UpdateUserCfg sensds a request to the api server to update the user's configuration.
-func UpdateUserCfg(cfg *UserConfig, uid, token, apiServer string) (int, error) {
-	url := fmt.Sprintf("%s/Users/%s/Configuration", apiServer, uid)
+func UpdateUserCfg(cfg *UserConfig, uid, token ID, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s/Configuration", apiServer, uid.String())
 	return postUpdateToServer(cfg, url, token)
 }
 
 // ChangePassword sends a password change request to the api backend.
-func ChangePassword(current, new, token, uid, apiServer string) (int, error) {
-	url := fmt.Sprintf("%s/Users/%s/Password", apiServer, uid)
+func ChangePassword(current, new string, token, uid ID, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s/Password", apiServer, uid.String())
 	return postUpdateToServer(PasswordRequest{New: new, Current: current}, url, token)
 }
 
 // DeleteUser sends a delete user request to the api server.
-func DeleteUser(uid, token, apiServer string) (int, error) {
-	url := fmt.Sprintf("%s/Users/%s", apiServer, uid)
+func DeleteUser(uid, token ID, apiServer string) (int, error) {
+	url := fmt.Sprintf("%s/Users/%s", apiServer, uid.String())
 	r, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return 0, err
@@ -324,7 +307,7 @@ func DeleteUser(uid, token, apiServer string) (int, error) {
 }
 
 // GetAllUsers gets a slice with all the users from the api server.
-func GetAllUsers(token, apiServer string) ([]*User, error) {
+func GetAllUsers(token ID, apiServer string) ([]*User, error) {
 	url := apiServer + "/Users"
 	r, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -341,7 +324,7 @@ func GetAllUsers(token, apiServer string) ([]*User, error) {
 	return users, DecodeBody(resp, &users)
 }
 
-func postUpdateToServer(postStruct interface{}, url, token string) (int, error) {
+func postUpdateToServer(postStruct interface{}, url string, token ID) (int, error) {
 	req, err := CreateRequestWithBody(http.MethodPost, url, postStruct)
 	if err != nil {
 		return 0, err
@@ -356,7 +339,7 @@ func postUpdateToServer(postStruct interface{}, url, token string) (int, error) 
 	return resp.StatusCode, nil
 }
 
-func setHeader(r *http.Request, token string) {
-	r.Header.Add(SessionKeyHeader, token)
+func setHeader(r *http.Request, token ID) {
+	r.Header.Add(SessionKeyHeader, token.String())
 	r.Header.Add("Content-Type", "application/json")
 }
