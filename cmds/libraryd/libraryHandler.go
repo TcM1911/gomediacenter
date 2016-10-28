@@ -4,12 +4,10 @@ import (
 	"sync"
 
 	"github.com/tcm1911/gomediacenter"
-
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Holds the libraries watched by this instance.
-var handler map[bson.ObjectId]gomediacenter.Library
+var handler map[string]gomediacenter.Library
 var handlerMutex sync.RWMutex
 
 // Adds a library to the handler.
@@ -17,29 +15,29 @@ func addToLibraryHandler(d gomediacenter.Library) {
 	handlerMutex.Lock()
 	defer handlerMutex.Unlock()
 	if handler == nil {
-		handler = make(map[bson.ObjectId]gomediacenter.Library)
+		handler = make(map[string]gomediacenter.Library)
 	}
-	handler[d.ID] = d
+	handler[d.ID.String()] = d
 }
 
 // Remove a library from the handler.
-func removeLibraryFromHandler(id bson.ObjectId) {
+func removeLibraryFromHandler(id gomediacenter.ID) {
 	handlerMutex.Lock()
 	defer handlerMutex.Unlock()
-	if _, ok := handler[id]; ok {
-		delete(handler, id)
+	if _, ok := handler[id.String()]; ok {
+		delete(handler, id.String())
 	}
 }
 
 // Returns a copy of the library data.
-func getCopyOfLibrary(id bson.ObjectId) gomediacenter.Library {
+func getCopyOfLibrary(id gomediacenter.ID) gomediacenter.Library {
 	handlerMutex.RLock()
 	defer handlerMutex.RUnlock()
-	lib := handler[id]
+	lib := handler[id.String()]
 	return lib
 }
 
-func fetchLibraryDataFromDB(db gomediacenter.LibraryMaintainer, id bson.ObjectId) error {
+func fetchLibraryDataFromDB(db gomediacenter.LibraryMaintainer, id gomediacenter.ID) error {
 	newLib, err := db.GetLibraryByID(id)
 	if err != nil {
 		return err

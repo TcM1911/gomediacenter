@@ -13,8 +13,6 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/mongo"
-
-	"gopkg.in/mgo.v2/bson"
 )
 
 var dbAdr *string = flag.String("dbaddr", "localhost:27017", "Address to the database.")
@@ -95,8 +93,8 @@ func main() {
 	log.Println("Halted..")
 }
 
-func readLibrayIdFromFile(db gomediacenter.LibraryMaintainer, filePath string) bson.ObjectId {
-	var id bson.ObjectId
+func readLibrayIdFromFile(db gomediacenter.LibraryMaintainer, filePath string) gomediacenter.ID {
+	var id gomediacenter.ID
 	file, err := os.Open(filePath)
 	defer file.Close()
 	if err != nil {
@@ -104,8 +102,11 @@ func readLibrayIdFromFile(db gomediacenter.LibraryMaintainer, filePath string) b
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		id = bson.ObjectIdHex(scanner.Text())
-		err := fetchLibraryDataFromDB(db, id)
+		id, err := gomediacenter.IDFromString(scanner.Text())
+		if err != nil {
+			log.Panic(err)
+		}
+		err = fetchLibraryDataFromDB(db, id)
 		if err != nil {
 			log.Panic(err)
 		}

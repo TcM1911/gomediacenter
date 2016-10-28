@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/auth"
+	"github.com/tcm1911/gomediacenter/middleware"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -122,7 +123,7 @@ func TestGetAllUsers(t *testing.T) {
 	db.On("GetAllUsers", mock.Anything).Return(users, nil)
 
 	queryVars := url.Values{}
-	SetContextVar(r, "queryVars", queryVars)
+	r = r.WithContext(middleware.AddQueryVarsToContext(r.Context(), queryVars))
 
 	recorder := httptest.NewRecorder()
 	GetAllUsers(db).ServeHTTP(recorder, r)

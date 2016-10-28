@@ -34,7 +34,7 @@ type Movie struct {
 	Studios         []Studio  `json:"Studios"`
 	HD              bool      `json:"IsHD"`
 	AFolder         bool      `json:"IsFolder"`
-	ParentID        string    `json:"ParentId"`
+	ParentID        ID        `json:"ParentId"`
 	Type            string    `json:"Type"`
 }
 

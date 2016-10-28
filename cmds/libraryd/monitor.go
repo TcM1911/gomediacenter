@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/tcm1911/gomediacenter"
-	"gopkg.in/mgo.v2/bson"
 )
 
-func monitorFolder(db gomediacenter.LibraryMaintainer, libId bson.ObjectId, folder string, shutdownChannel chan struct{}) {
+func monitorFolder(db gomediacenter.LibraryMaintainer, libId gomediacenter.ID, folder string, shutdownChannel chan struct{}) {
 	ticker := time.Tick(time.Duration(*interval) * time.Minute)
 monitorLoop:
 	for {

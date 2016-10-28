@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/graceful"
 	"github.com/tcm1911/gomediacenter/auth"
-	"github.com/tcm1911/gomediacenter/mediaserver/routes"
 	"github.com/tcm1911/gomediacenter/mongo"
+	"github.com/tcm1911/gomediacenter/routes"
 )
 
 func main() {
@@ -26,11 +26,11 @@ func main() {
 	defer db.Close()
 
 	log.Println("Starting sessions manager...")
-	sessionManager := &auth.SimpleSessionManager
+	sessionManager := &auth.SimpleSessionManager{}
 	shutdownSession := sessionManager.Run(db)
 
 	// API server.
-	mux := routes.NewAPIRouter(db, db)
+	mux := routes.NewAPIRouter(db, db, sessionManager)
 	log.Println("Serving API on", *addr)
 	graceful.Run(*addr, 3*time.Second, mux)
 
