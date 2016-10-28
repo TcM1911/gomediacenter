@@ -99,3 +99,20 @@ func getIDFromContext(ctx context.Context, key string) ID {
 }
 
 const idCtxKey string = "idKey"
+
+// Implementation of the TextMarshaler and TextUnmarshaler.
+
+// UnmarshalText unmarshals the text representation of the object to an object.
+func (i *ID) UnmarshalText(text []byte) error {
+	id, err := IDFromString(string(text))
+	if err != nil {
+		return err
+	}
+	i.Bytes = id.Bytes
+	return nil
+}
+
+// MarshalText marshals the object to a text representation.
+func (i *ID) MarshalText() (text []byte, err error) {
+	return []byte(i.String()), nil
+}

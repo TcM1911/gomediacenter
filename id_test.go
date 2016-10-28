@@ -106,4 +106,22 @@ func TestContext(t *testing.T) {
 	})
 }
 
+func TestTextmarshaler(t *testing.T) {
+	assert := assert.New(t)
+	expectedID := NewID()
+	expectedHex := []byte(expectedID.String())
+	t.Parallel()
+	t.Run("Marshal", func(t *testing.T) {
+		b, err := expectedID.MarshalText()
+		assert.NoError(err, "Marshaling should not fail")
+		assert.Equal(expectedHex, b, "Returned byte array should equal expected.")
+	})
+	t.Run("Unmarshal", func(t *testing.T) {
+		id := ID{}
+		err := id.UnmarshalText(expectedHex)
+		assert.NoError(err, "Unmarshaling should not fail")
+		assert.True(id.Equal(expectedID), "Id should equal expected ID.")
+	})
+}
+
 const idStr = "00112233445566778899aabbccddeeff"
