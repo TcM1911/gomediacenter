@@ -14,10 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/auth"
-	"github.com/tcm1911/gomediacenter/mediaserver/routes"
 	"github.com/tcm1911/gomediacenter/mongo"
+	"github.com/tcm1911/gomediacenter/routes"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/ory-am/dockertest.v2"
 )
 
@@ -39,9 +38,9 @@ func TestGetPublicUserListing(t *testing.T) {
 	for _, user := range users {
 		switch user.Name {
 		case adminName:
-			adminUserReturned = adminID.Hex() == user.ID.Hex()
+			adminUserReturned = adminID.Equal(user.ID)
 		case userName:
-			normalUserReturned = userID.Hex() == user.ID.Hex()
+			normalUserReturned = userID.Equal(user.ID)
 		}
 	}
 	assert.True(adminUserReturned, "Admin user should be in the user listing.")
@@ -64,18 +63,19 @@ func TestAuthenticatingUserByName(t *testing.T) {
 
 	assert.NotNil(resp.Token, "Nil token.")
 
-	adminToken = resp.Token
+	token, err := gomediacenter.IDFromString(resp.Token)
 
-	if adminToken == "" {
-		t.FailNow()
+	if err != nil || token.IsNil() {
+		assert.Fail("Bad admin token", err.Error())
 	}
+	adminToken = token
 }
 
 func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
 	assert := assert.New(t)
 
 	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(
-		adminID.Hex(),
+		adminID,
 		adminPassword,
 		serverURL,
 		authTestHeader)
@@ -85,12 +85,15 @@ func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
 
 	assert.Equal(http.StatusOK, code)
 
-	token := resp.Token
-	log.Println("Session token:", token)
+	token, err := gomediacenter.IDFromString(resp.Token)
+	if err != nil || token.IsNil() {
+		assert.Fail("Bad response token:", err.Error())
+	}
+	log.Println("Session token:", token.String())
 	assert.NotNil(token, "Nil token.")
 
 	// Logging out.
-	loggedOut, err := gomediacenter.LogoutUserReq(adminID.Hex(), token, serverURL)
+	loggedOut, err := gomediacenter.LogoutUserReq(adminID, token, serverURL)
 	if err != nil {
 		assert.Fail("Failed to logout: " + err.Error())
 	}
@@ -99,15 +102,16 @@ func TestAuthenticatingUserByIdAndLogout(t *testing.T) {
 
 func TestShouldOnlyAccessUserDataIfLoggedInAsCorrectUser(t *testing.T) {
 	assert := assert.New(t)
-	adminUser, code, err := gomediacenter.GetUser(adminID.Hex(), adminToken, serverURL)
+	adminUser, code, err := gomediacenter.GetUser(adminID, adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Error when getting admin user data: " + err.Error())
+		return
 	}
 	assert.Equal(adminName, adminUser.Name)
 	assert.Equal(http.StatusOK, code)
 
-	token := bson.NewObjectId()
-	adminByNormalUser, failCode, err := gomediacenter.GetUser(adminID.Hex(), token.Hex(), serverURL)
+	token := gomediacenter.NewRandomID()
+	adminByNormalUser, failCode, err := gomediacenter.GetUser(adminID, token, serverURL)
 	if err == nil {
 		assert.Fail("This request should fail.")
 	}
@@ -117,7 +121,7 @@ func TestShouldOnlyAccessUserDataIfLoggedInAsCorrectUser(t *testing.T) {
 
 func TestAdminCanAccessUserDataIfLoggedIn(t *testing.T) {
 	assert := assert.New(t)
-	user, code, err := gomediacenter.GetUser(userID.Hex(), adminToken, serverURL)
+	user, code, err := gomediacenter.GetUser(userID, adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Error when getting user data: " + err.Error())
 	}
@@ -140,7 +144,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 		"",
 		setPass,
 		adminToken,
-		user.ID.Hex(),
+		user.ID,
 		serverURL)
 	if err != nil {
 		assert.Fail(err.Error())
@@ -149,7 +153,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert.Equal(http.StatusOK, code)
 
 	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(
-		user.ID.Hex(),
+		user.ID,
 		setPass,
 		serverURL,
 		authTestHeader)
@@ -161,13 +165,16 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert.Equal(un, resp.User.Name)
 
 	// User changes the password.
-	userToken := resp.Token
+	userToken, err := gomediacenter.IDFromString(resp.Token)
+	if err != nil {
+		assert.Fail("Bad response token:", err.Error())
+	}
 	changedPass := "changedPassword"
 	code, err = gomediacenter.ChangePassword(
 		setPass,
 		changedPass,
 		userToken,
-		resp.User.ID.Hex(),
+		resp.User.ID,
 		serverURL)
 	if err != nil {
 		assert.Fail("Failed to change the user password.")
@@ -176,7 +183,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert.Equal(http.StatusOK, code)
 
 	// User logs out.
-	ok, err := gomediacenter.LogoutUserReq(resp.User.ID.Hex(), userToken, serverURL)
+	ok, err := gomediacenter.LogoutUserReq(resp.User.ID, userToken, serverURL)
 	if err != nil {
 		assert.Fail("Failed to logout.")
 		return
@@ -184,7 +191,7 @@ func TestCreateNewUserAndChangeThePassword(t *testing.T) {
 	assert.True(ok, "Did user logout.")
 
 	// Admin removes user account.
-	code, err = gomediacenter.DeleteUser(resp.User.ID.Hex(), adminToken, serverURL)
+	code, err = gomediacenter.DeleteUser(resp.User.ID, adminToken, serverURL)
 	if err != nil {
 		assert.Fail("Failed to remove the user")
 		return
@@ -204,19 +211,23 @@ func TestAdminCanRequestAllUsersData(t *testing.T) {
 
 func TestUpdateUserProfile(t *testing.T) {
 	assert := assert.New(t)
-	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(userID.Hex(), userPassword, serverURL, authTestHeader)
+	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(userID, userPassword, serverURL, authTestHeader)
 	if code != http.StatusOK || err != nil {
 		assert.Fail("Authentcation failed.")
 		return
 	}
 	user := resp.User
 	user.Name = "Changed name"
-	code, err = gomediacenter.UpdateUser(user, user.ID.Hex(), resp.Token, serverURL)
+	token, err := gomediacenter.IDFromString(resp.Token)
+	if err != nil {
+		assert.Fail("Bad response token:", err.Error())
+	}
+	code, err = gomediacenter.UpdateUser(user, user.ID, token, serverURL)
 
 	assert.Equal(http.StatusOK, code, "Wrong status code returned.")
 
 	// Verify data in the db.
-	dbData, code, err := gomediacenter.GetUser(userID.Hex(), resp.Token, serverURL)
+	dbData, code, err := gomediacenter.GetUser(userID, token, serverURL)
 	if code != http.StatusOK || err != nil {
 		assert.Fail("Failed to retrieve data from db.")
 		return
@@ -226,7 +237,7 @@ func TestUpdateUserProfile(t *testing.T) {
 	assert.Equal(user, dbData, "Profile doesn't match.")
 
 	// Logout
-	ok, err := gomediacenter.LogoutUserReq(userID.Hex(), resp.Token, serverURL)
+	ok, err := gomediacenter.LogoutUserReq(userID, token, serverURL)
 	assert.True(ok, "Logout failed.")
 }
 
@@ -239,7 +250,10 @@ func TestUpdateUserPolicy(t *testing.T) {
 		assert.FailNow("Authentication failed")
 	}
 	user := rsp.User
-	token := rsp.Token
+	token, err := gomediacenter.IDFromString(rsp.Token)
+	if err != nil {
+		assert.Fail("Bad response token:", err.Error())
+	}
 	p := user.Policy
 	assert.False(p.Admin, "User should not be an admin.")
 
@@ -272,7 +286,10 @@ func TestUpdateUserConfig(t *testing.T) {
 	if rsp == nil {
 		assert.FailNow("Authentication failed")
 	}
-	token := rsp.Token
+	token, err := gomediacenter.IDFromString(rsp.Token)
+	if err != nil {
+		assert.Fail("Bad response token:", err.Error())
+	}
 	cfg := rsp.User.Configuration
 	cfg.SubtitleMode = "SubtitleMode has been updated"
 
@@ -299,12 +316,6 @@ func TestMain(m *testing.M) {
 	c, err := dockertest.ConnectToMongoDB(15, 5*time.Second, func(url string) bool {
 		log.Println("Connecting to the database...")
 		db.Connect(url)
-
-		log.Println("Starting API server")
-		handler := routes.NewAPIRouter(db, db)
-		server := httptest.NewServer(handler)
-		serverURL = server.URL
-
 		return true
 	})
 	defer db.Close()
@@ -319,7 +330,13 @@ func TestMain(m *testing.M) {
 	setupDB(db)
 
 	// Start session manager
-	shutdown := auth.Run(db)
+	sm := &auth.SimpleSessionManager{}
+	shutdown := sm.Run(db)
+
+	log.Println("Starting API server")
+	handler := routes.NewAPIRouter(db, db, sm)
+	server := httptest.NewServer(handler)
+	serverURL = server.URL
 
 	// Run tests
 	resutls := m.Run()
@@ -343,9 +360,9 @@ const (
 	userPassword  = "userpassword"
 )
 
-var adminID bson.ObjectId
-var adminToken string
-var userID bson.ObjectId
+var adminID gomediacenter.ID
+var adminToken gomediacenter.ID
+var userID gomediacenter.ID
 
 func setupDB(db *mongo.DB) {
 
@@ -376,15 +393,15 @@ func setupUser(u, pw string, admin bool) *gomediacenter.User {
 	return user
 }
 
-func createNewUserInDB(u, pw string, admin bool) string {
+func createNewUserInDB(u, pw string, admin bool) gomediacenter.ID {
 	user := setupUser(u, pw, admin)
 	if err := dbStruct.AddNewUser(user); err != nil {
 		log.Fatalln("Error while adding normal user to the database:", err)
 	}
-	return user.ID.Hex()
+	return user.ID
 }
 
-func loginUser(uid, pw, url, header string) *gomediacenter.AuthUserResponse {
+func loginUser(uid gomediacenter.ID, pw, url, header string) *gomediacenter.AuthUserResponse {
 	resp, code, err := gomediacenter.AuthenticateUserByIDReqest(uid, pw, url, header)
 	if code != http.StatusOK || err != nil {
 		return nil

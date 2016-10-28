@@ -3,11 +3,15 @@ package routes
 import (
 	"github.com/gorilla/mux"
 	"github.com/tcm1911/gomediacenter"
-	"github.com/tcm1911/gomediacenter/mediaserver/controllers"
-	"github.com/tcm1911/gomediacenter/mediaserver/middleware"
+	"github.com/tcm1911/gomediacenter/handlers"
+	"github.com/tcm1911/gomediacenter/middleware"
 )
 
-func newUsersRouter(um gomediacenter.UserManager, itemFinder gomediacenter.ItemFinder, router *mux.Router) {
+func newUsersRouter(
+	um gomediacenter.UserManager,
+	itemFinder gomediacenter.ItemFinder,
+	sm gomediacenter.SessionManager,
+	router *mux.Router) {
 	/*
 		/Users
 	*/
@@ -16,97 +20,62 @@ func newUsersRouter(um gomediacenter.UserManager, itemFinder gomediacenter.ItemF
 	// GET to the route "/Users" gets a list of users. This action required the user
 	// to be logged in. The list can be filtered by the query parameters: IsHidden,
 	// IsDisabled, and IsGuest.
-	router.HandleFunc("/Users", middleware.WithContext(
-		middleware.WithQueryVars(
-			middleware.Admin(
-				controllers.GetAllUsers(um))))).Methods("GET")
+	router.HandleFunc("/Users", middleware.WithQueryVars(middleware.Admin(sm, handlers.GetAllUsers(um)))).Methods("GET")
 
 	// GET to the route"/Users/Public" gets a list of publicly visible users
 	// for display on a login screen.
-	usersRouter.HandleFunc("/Public", middleware.WithContext(
-		controllers.GetAllUsersPublic(um))).Methods("GET")
+	usersRouter.HandleFunc("/Public", handlers.GetAllUsersPublic(um)).Methods("GET")
 
 	// POST to the route /Users/New creates a new user. This action requires
 	// admin status. The username is sent in the body with the parameter name of 'Name'.
-	usersRouter.HandleFunc("/New", middleware.WithContext(
-		middleware.Admin(
-			controllers.NewUser(um)))).Methods("POST")
+	usersRouter.HandleFunc("/New", middleware.Admin(sm, handlers.NewUser(um))).Methods("POST")
 
 	// GET to the route /Users/{uid} returns the data about a user. This actions
 	// requires admin status or being login as the user.
-	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
-		middleware.WithPathVars(
-			middleware.AdminOrLoggedInUser(
-				controllers.GetUserByID(um))))).Methods("GET")
-
+	usersRouter.HandleFunc("/{uid}", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, handlers.GetUserByID(um)))).Methods("GET")
 	// GET to the route "/Users/{Id}/Offline" gets an offline user record by Id.
-	usersRouter.HandleFunc("/{uid}/Offline", middleware.WithContext(
-		middleware.WithPathVars(
-			middleware.AdminOrLoggedInUser(
-				controllers.GetOfflineUserByID(um))))).Methods("GET")
+	usersRouter.HandleFunc("/{uid}/Offline", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, handlers.GetOfflineUserByID(um)))).Methods("GET")
 
 	//A DELETE to /Users/{uid} deletes a user and all it's item data.
 	// This action requires admin rights.
-	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
-		middleware.WithPathVars(
-			middleware.Admin(
-				controllers.DeleteUser(um))))).Methods("DELETE")
+	usersRouter.HandleFunc("/{uid}", middleware.WithPathVars(middleware.Admin(sm, handlers.DeleteUser(um)))).Methods("DELETE")
 
 	// A POST to /Users/{uid}/Authenticate authenticates a user.
 	// The password is past in the body in the parameter password.
-	usersRouter.HandleFunc("/{uid}/Authenticate",
-		middleware.WithContext(
-			middleware.WithPathVars(
-				middleware.VerifyIds([]string{"uid"},
-					controllers.Authenticate(um))))).Methods("POST")
+	usersRouter.HandleFunc("/{uid}/Authenticate", middleware.WithPathVars(handlers.Authenticate(um, sm))).Methods("POST")
 
 	// A POST to /Users/AuthenticateByName authenticates a user.
 	// Username and password is past in the body as the parameters Username and password.
-	usersRouter.HandleFunc("/AuthenticateByName", middleware.WithContext(
-		controllers.AuthenticateByName(um))).Methods("POST")
+	usersRouter.HandleFunc("/AuthenticateByName", handlers.AuthenticateByName(um, sm)).Methods("POST")
 
 	// A POST to /Users/{uid}/Logout logs the user out.
-	usersRouter.HandleFunc("/{uid}/Logout",
-		middleware.WithContext(
-			middleware.WithPathVars(
-				middleware.VerifyIds([]string{"uid"},
-					controllers.LogoutUser())))).Methods("POST")
+	usersRouter.HandleFunc("/{uid}/Logout", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, handlers.LogoutUser(sm)))).Methods("POST")
 
 	// A POST to /Users/{Id}/Password updates a user's password.
 	// New password and current password are past as body parameters
 	// newPassword and currentPassword.
-	usersRouter.HandleFunc("/{uid}/Password", middleware.WithContext(
-		middleware.WithPathVars(
-			middleware.VerifyIds([]string{"uid"},
-				middleware.AdminOrLoggedInUser(
-					middleware.WithQueryVars(
-						controllers.ChangeUserPassword(um))))))).Methods("POST")
+	usersRouter.HandleFunc("/{uid}/Password", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, middleware.WithQueryVars(handlers.ChangeUserPassword(um))))).Methods("POST")
 
 	//[Route("/Users/{Id}/EasyPassword", "POST", Summary = "Updates a user's easy password")]
 	//[Authenticated]
 	usersRouter.HandleFunc("/{id}/EasyPassword", notYetImplemented).Methods("POST")
 
 	// A POST to /Users/{uid} updates a user's profile.
-	usersRouter.HandleFunc("/{uid}", middleware.WithContext(
-		middleware.WithPathVars(
-			middleware.VerifyIds([]string{"uid"},
-				middleware.AdminOrLoggedInUser(
-					controllers.UpdateUser(um)))))).Methods("POST")
+	usersRouter.HandleFunc("/{uid}", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, handlers.UpdateUser(um)))).Methods("POST")
 
 	// A Post to /Users/{Id}/Policy updates a users's policy. This request requires admin rights.
 	// The new policy is posted as the body.
-	usersRouter.HandleFunc("/{uid}/Policy",
-		middleware.WithContext(
-			middleware.WithPathVars(
-				middleware.VerifyIds([]string{"uid"},
-					middleware.Admin(
-						controllers.UpdateUserPolicy(um)))))).Methods("POST")
+	usersRouter.HandleFunc("/{uid}/Policy", middleware.WithPathVars(middleware.Admin(
+		sm, handlers.UpdateUserPolicy(um)))).Methods("POST")
 
 	//A Post to /Users/{Id}/Configuration updates a users's configuration.
-	usersRouter.HandleFunc("/{uid}/Configuration", middleware.WithContext(
-		middleware.WithPathVars(
-			middleware.VerifyIds([]string{"uid"}, middleware.AdminOrLoggedInUser(
-				controllers.UpdateUserConfiguration(um)))))).Methods("POST")
+	usersRouter.HandleFunc("/{uid}/Configuration", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, handlers.UpdateUserConfiguration(um)))).Methods("POST")
 
 	//[Route("/Users/ForgotPassword", "POST", Summary = "Initiates the forgot password process for a local user")]
 	//[ApiMember(Name = "EnteredUsername", IsRequired = false, DataType = "string", ParameterType = "body", Verb = "POST")]
@@ -176,11 +145,8 @@ func newUsersRouter(um gomediacenter.UserManager, itemFinder gomediacenter.ItemF
 	//[Route("/Users/{UserId}/Items/{Id}", "GET", Summary = "Gets an item from a user's library")]
 	//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
 	//[ApiMember(Name = "Id", Description = "Item Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
-	usersRouter.HandleFunc("/{uid}/Items/{id}",
-		middleware.WithContext(
-			middleware.WithPathVars(
-				middleware.AdminOrLoggedInUser(
-					controllers.UserItemHandler(itemFinder))))).Methods("GET")
+	usersRouter.HandleFunc("/{uid}/Items/{id}", middleware.WithPathVars(middleware.AdminOrLoggedInUser(
+		sm, handlers.UserItemHandler(itemFinder)))).Methods("GET")
 
 	//[Route("/Users/{UserId}/Items/Root", "GET", Summary = "Gets the root folder from a user's library")]
 	//[ApiMember(Name = "UserId", Description = "User Id", IsRequired = true, DataType = "string", ParameterType = "path", Verb = "GET")]
