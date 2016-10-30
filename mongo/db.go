@@ -33,7 +33,7 @@ type DB struct {
 }
 
 type mediaType struct {
-	ID    bson.ObjectId           `bson:"_id"`
+	ID    gomediacenter.ID        `bson:"id"`
 	Media gomediacenter.MEDIATYPE `bson:"media"`
 }
 
@@ -58,10 +58,10 @@ func (d *DB) Close() {
 }
 
 // FindItemByID finds an item from the database. It also returns the media type.
-func (d *DB) FindItemByID(id string) (gomediacenter.MEDIATYPE, interface{}, error) {
+func (d *DB) FindItemByID(id gomediacenter.ID) (gomediacenter.MEDIATYPE, interface{}, error) {
 	s := d.getDBSessionCopy()
 	defer s.Close()
-	q := getCollection(s, mediatypeCollection).FindId(bson.ObjectIdHex(id))
+	q := getCollection(s, mediatypeCollection).Find(bson.M{"id": id})
 
 	var mediatype mediaType
 	if err := q.One(&mediatype); err != nil {
@@ -79,7 +79,7 @@ func (d *DB) FindItemByID(id string) (gomediacenter.MEDIATYPE, interface{}, erro
 }
 
 // FindItemUserData gets the user data for an item.
-func (d *DB) FindItemUserData(uid, itemID string) (*gomediacenter.ItemUserData, error) {
+func (d *DB) FindItemUserData(uid, itemID gomediacenter.ID) (*gomediacenter.ItemUserData, error) {
 	s := d.getDBSessionCopy()
 	defer s.Close()
 	q := getCollection(s, itemUserDataCollection).Find(bson.M{"uid": uid, "id": itemID})
@@ -110,14 +110,14 @@ func (d *DB) InsertItemUserData(userData *gomediacenter.ItemUserData) error {
 }
 
 // FindItemIntro returns intros for an item.
-func (d *DB) FindItemIntro(id string) ([]*gomediacenter.Intro, error) {
+func (d *DB) FindItemIntro(id gomediacenter.ID) ([]*gomediacenter.Intro, error) {
 	// TODO: Add support for intros
 	var intros []*gomediacenter.Intro
 	return intros, mgo.ErrNotFound
 }
 
 // InsertItemType inserts an item into the media type collection.
-func (d *DB) InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYPE) error {
+func (d *DB) InsertItemType(id gomediacenter.ID, gomediaType gomediacenter.MEDIATYPE) error {
 	s := d.getDBSessionCopy()
 	defer s.Close()
 
@@ -130,11 +130,11 @@ func (d *DB) InsertItemType(id bson.ObjectId, gomediaType gomediacenter.MEDIATYP
 }
 
 // RemoveItemType removes an item in the media type collection.
-func (d *DB) RemoveItemType(id bson.ObjectId) error {
+func (d *DB) RemoveItemType(id gomediacenter.ID) error {
 	session := d.getDBSessionCopy()
 	defer session.Close()
 
-	err := getCollection(session, mediatypeCollection).RemoveId(id)
+	err := getCollection(session, mediatypeCollection).Remove(bson.M{"id": id})
 	if err != nil {
 		return err
 	}

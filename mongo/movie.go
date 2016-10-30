@@ -13,8 +13,8 @@ import (
 
 // InsertNewMovie adds a new movie to the database. The function returns true if the insertion
 // was successful.
-func (d *DB) InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
-	id := bson.NewObjectId()
+func (d *DB) InsertNewMovie(movie *gomediacenter.Movie) (gomediacenter.ID, error) {
+	id := gomediacenter.NewID()
 	movie.ID = id
 	session := d.getDBSessionCopy()
 	defer session.Close()
@@ -33,11 +33,11 @@ func (d *DB) InsertNewMovie(movie *gomediacenter.Movie) (bson.ObjectId, error) {
 
 // IsMovieFileAlreadyKnown looks if the file is already in the database. If it is, the id is returned
 // as the second argument.
-func (d *DB) IsMovieFileAlreadyKnown(relativePath string, parentID bson.ObjectId) bool {
+func (d *DB) IsMovieFileAlreadyKnown(relativePath string, parentID gomediacenter.ID) bool {
 	session := d.getDBSessionCopy()
 	defer session.Close()
 
-	search := bson.M{"path": relativePath, "parentId": parentID.Hex()}
+	search := bson.M{"path": relativePath, "parentId": parentID}
 	n, err := getCollection(session, movieCollection).Find(search).Count()
 	if err != nil {
 		// Log the error and treat like it's a new file.
@@ -54,8 +54,8 @@ func (d *DB) IsMovieFileAlreadyKnown(relativePath string, parentID bson.ObjectId
 // Private //
 /////////////
 
-func findMovieByID(d *DB, id string) (*gomediacenter.Movie, error) {
-	q := d.session.DB(databaseName).C(movieCollection).FindId(bson.ObjectIdHex(id))
+func findMovieByID(d *DB, id gomediacenter.ID) (*gomediacenter.Movie, error) {
+	q := d.session.DB(databaseName).C(movieCollection).Find(bson.M{"id": id})
 	var movie *gomediacenter.Movie
 	if err := q.One(&movie); err != nil {
 		return movie, err

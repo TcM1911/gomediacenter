@@ -12,7 +12,8 @@ import (
 	"github.com/tcm1911/gomediacenter"
 )
 
-var NoResultFound error = errors.New("no item found")
+// ErrNoResultFound is returned when no item is found.
+var ErrNoResultFound = errors.New("no item found")
 
 // IsVideoFile determines if a file is a video file based on the file extension.
 // The function will only return true if the file extension matches predetermined
@@ -42,6 +43,7 @@ func ParseMovieInfo(s string) (string, int) {
 	return "", 0
 }
 
+// DownloadIMDBMetadata gets the metadata from IMDB.
 func DownloadIMDBMetadata(movieName string, year int, fetcher IMDBMetadataDownloader) (*gomediacenter.Movie, error) {
 	movie := new(gomediacenter.Movie)
 
@@ -57,7 +59,7 @@ func DownloadIMDBMetadata(movieName string, year int, fetcher IMDBMetadataDownlo
 
 	// If no item found, return an error.
 	if len(results) < 1 {
-		return movie, NoResultFound
+		return movie, ErrNoResultFound
 	}
 
 	imdbData := results[0]
@@ -90,21 +92,30 @@ func parseCast(data *imdb.Title) []gomediacenter.Person {
 	var cast []gomediacenter.Person
 
 	for _, person := range data.Actors {
-		p := gomediacenter.Person{Name: person.FullName, ID: person.ID, Type: "Actor"}
+		p := createCast(person)
+		p.Type = "Actor"
 		cast = append(cast, p)
 	}
 
 	for _, person := range data.Directors {
-		p := gomediacenter.Person{Name: person.FullName, ID: person.ID, Type: "Director", Role: "Director"}
+		p := createCast(person)
+		p.Type = "Director"
+		p.Role = "Director"
 		cast = append(cast, p)
 	}
 
 	for _, person := range data.Writers {
-		p := gomediacenter.Person{Name: person.FullName, ID: person.ID, Type: "Writer", Role: "Writer"}
+		p := createCast(person)
+		p.Type = "Writer"
+		p.Role = "Writer"
 		cast = append(cast, p)
 	}
 
 	return cast
+}
+
+func createCast(person imdb.Name) gomediacenter.Person {
+	return gomediacenter.Person{Name: person.FullName, ImdbID: person.ID, ID: gomediacenter.NewID()}
 }
 
 func matchSceneRegex(s string) (string, int) {

@@ -10,7 +10,6 @@ import (
 
 	"github.com/tcm1911/gomediacenter"
 	"github.com/tcm1911/gomediacenter/library"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type fileJob struct {
@@ -20,7 +19,7 @@ type fileJob struct {
 	libPath   string
 }
 
-func scanFolder(db gomediacenter.LibraryMaintainer, libId bson.ObjectId, folder string, complete chan<- struct{}) {
+func scanFolder(db gomediacenter.LibraryMaintainer, libId gomediacenter.ID, folder string, complete chan<- struct{}) {
 	// Before we start the scan, let's make sure we have the newest config for this library.
 	err := fetchLibraryDataFromDB(db, libId)
 	if err != nil {
@@ -85,7 +84,7 @@ func scanFolder(db gomediacenter.LibraryMaintainer, libId bson.ObjectId, folder 
 	workers.Wait()
 	log.Println("Scanning for new items in", folder, "complete.")
 	// Prune dead items in the library.
-	purneLibrary(db, files, LIBRARY.ID.Hex(), LIBRARY.Type)
+	purneLibrary(db, files, LIBRARY.ID, LIBRARY.Type)
 	log.Println("Library pruning complete.")
 	complete <- struct{}{}
 }

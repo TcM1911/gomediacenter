@@ -4,15 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-
-	"gopkg.in/mgo.v2/bson"
 )
 
 // PublicUserResponse is the struct returned when an unathorized user request a list
 // of all users.
 type PublicUserResponse struct {
-	Name string        `json:"Name"`
-	ID   bson.ObjectId `json:"id"`
+	Name string `json:"Name"`
+	ID   ID     `json:"id"`
 }
 
 // LoginRequest is the request struct for a login request.

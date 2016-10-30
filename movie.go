@@ -1,17 +1,13 @@
 package gomediacenter
 
-import (
-	"time"
+import "time"
 
-	"gopkg.in/mgo.v2/bson"
-)
-
-// Movie is the data struct for movie files.
+// Movie is the struct that's encoded to JSON.
 type Movie struct {
-	Name     string        `json:"Name" bson:"name"`
-	SortName string        `json:"SortName" bson:"sortName"`
-	ID       bson.ObjectId `json:"Id" bson:"_id"`
-	Path     string        `json:"Path" bson:"path"`
+	Name     string `json:"Name"`
+	SortName string `json:"SortName"`
+	ID       ID     `json:"Id"`
+	Path     string `json:"Path"`
 	Video
 	VideoSource
 	ExtraType    string    `json:"ExtraType,omitempty"`
@@ -38,7 +34,7 @@ type Movie struct {
 	Studios         []Studio  `json:"Studios"`
 	HD              bool      `json:"IsHD"`
 	AFolder         bool      `json:"IsFolder"`
-	ParentID        string    `json:"ParentId" bson:"parentId"`
+	ParentID        ID        `json:"ParentId"`
 	Type            string    `json:"Type"`
 }
 

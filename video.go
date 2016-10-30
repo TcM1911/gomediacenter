@@ -16,7 +16,7 @@ type Video struct {
 // Studio holds data of a production studio.
 type Studio struct {
 	Name string `json:"Name"`
-	ID   string `json:"Id"`
+	ID   ID     `json:"Id"`
 }
 
 // VideoSource holds information of the video source file.

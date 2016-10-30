@@ -34,7 +34,7 @@ func main() {
 			panic(err)
 		}
 		fmt.Println(`Put the library id in a file called ".library_id" in the root folder of the library.`)
-		fmt.Println("Library id:", library.ID.Hex())
+		fmt.Println("Library id:", library.ID)
 	}
 
 }

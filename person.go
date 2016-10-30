@@ -1,10 +1,11 @@
 package gomediacenter
 
-// Person is an actor, artist, director etc.
+// Person is the struct encoded to JSON.
 type Person struct {
 	Name     string `json:"Name"`
-	ID       string `json:"Id"`
+	ID       ID     `json:"Id"`
 	Role     string `json:"Role"`
 	Type     string `json:"Type"`
 	ImageTag string `json:"PrimaryImageTag"`
+	ImdbID   string `json:"Imdb"`
 }

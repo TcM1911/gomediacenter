@@ -12,7 +12,7 @@ import (
 // This function checks all items in the library against the files in the library folder.
 // If an item exist in the database but no file was found, the item is removed.
 // This is used to remove old items.
-func purneLibrary(db gomediacenter.LibraryMaintainer, files map[string]struct{}, parentId string, mediaType gomediacenter.MEDIATYPE) {
+func purneLibrary(db gomediacenter.LibraryMaintainer, files map[string]struct{}, parentId gomediacenter.ID, mediaType gomediacenter.MEDIATYPE) {
 	log.Println("Pruning dead items from the library.")
 
 	// Get all items in the library and check if the file was walked.
@@ -64,7 +64,7 @@ func movieFileProcessor(db gomediacenter.MovieMaintainer, job fileJob) {
 	// Add the results to a movie struct.
 	movie.Chapters = library.ConvertFFprobeChapter(ffprobeOutput.Chapters)
 	movie.MediaStreams = library.ConvertFFprobeStream(ffprobeOutput.Streams)
-	movie.ParentID = parentId.Hex()
+	movie.ParentID = parentId
 	movie.Path = relativePath
 
 	// Add the new movie to the db.
@@ -73,7 +73,7 @@ func movieFileProcessor(db gomediacenter.MovieMaintainer, job fileJob) {
 		log.Println("Error when adding", movie.Name, "to the database", err)
 		return
 	}
-	log.Println(movie.Name, "(", movieId.Hex(), ") added to the library.")
+	log.Println(movie.Name, "(", movieId, ") added to the library.")
 }
 
 func fetchMetaDataFromIMDB(movieName string, year int, metadataFetcher *library.MetadataDownloader, res chan<- *gomediacenter.Movie) {
